@@ -38,6 +38,8 @@ typedef struct fake_io {
 
 typedef struct fake_events {
     pd_receiver_loop_event events[8];
+    uint64_t received[8];
+    uint64_t total[8];
     size_t count;
 } fake_events;
 
@@ -113,12 +115,17 @@ static uint64_t fake_progress(void *context)
     return ((fake_handler *)context)->received_bytes;
 }
 
-static void fake_event(void *context, pd_receiver_loop_event event, uint64_t received_bytes)
+static void fake_event(void *context,
+                       pd_receiver_loop_event event,
+                       uint64_t received_bytes,
+                       uint64_t total_bytes)
 {
     fake_events *events = (fake_events *)context;
-    (void)received_bytes;
     if (events->count < sizeof(events->events) / sizeof(events->events[0])) {
-        events->events[events->count++] = event;
+        size_t index = events->count++;
+        events->events[index] = event;
+        events->received[index] = received_bytes;
+        events->total[index] = total_bytes;
     }
 }
 
@@ -190,10 +197,17 @@ static void test_happy_path(void)
     PD_TEST_ASSERT(io.acks[2].received_bytes == UINT64_C(3));
     PD_TEST_ASSERT(events.count == 5U);
     PD_TEST_ASSERT(events.events[0] == PD_RECEIVER_LOOP_READY);
+    PD_TEST_ASSERT(events.total[0] == UINT64_C(0));
     PD_TEST_ASSERT(events.events[1] == PD_RECEIVER_LOOP_FILE_STARTED);
+    PD_TEST_ASSERT(events.total[1] == UINT64_C(3));
     PD_TEST_ASSERT(events.events[2] == PD_RECEIVER_LOOP_PROGRESS);
+    PD_TEST_ASSERT(events.received[2] == UINT64_C(3));
+    PD_TEST_ASSERT(events.total[2] == UINT64_C(3));
     PD_TEST_ASSERT(events.events[3] == PD_RECEIVER_LOOP_VERIFYING);
+    PD_TEST_ASSERT(events.total[3] == UINT64_C(3));
     PD_TEST_ASSERT(events.events[4] == PD_RECEIVER_LOOP_COMPLETE);
+    PD_TEST_ASSERT(events.received[4] == UINT64_C(3));
+    PD_TEST_ASSERT(events.total[4] == UINT64_C(3));
 }
 
 static void test_unexpected_message_fails_closed(void)
@@ -233,6 +247,7 @@ static void test_unexpected_message_fails_closed(void)
     PD_TEST_ASSERT(io.acks[0].status == PD_ACK_PROTOCOL_ERROR);
     PD_TEST_ASSERT(events.count == 2U);
     PD_TEST_ASSERT(events.events[1] == PD_RECEIVER_LOOP_FAILED);
+    PD_TEST_ASSERT(events.total[1] == UINT64_C(0));
 }
 
 int main(void)
