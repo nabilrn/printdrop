@@ -1,6 +1,7 @@
 #include "printdrop/protocol.h"
 #include "printdrop/receiver_session.h"
 #include "printdrop/session.h"
+#include "printdrop/session_url.h"
 #include "printdrop/transport.h"
 
 #include <stdio.h>
@@ -249,6 +250,52 @@ static void test_receiver_session_expiry_and_failures(void)
                    PD_RECEIVER_SESSION_EXPIRED_RESULT);
 }
 
+static void test_session_url_builder(void)
+{
+    pd_receiver_session session;
+    uint8_t seed = UINT8_C(0);
+    char url[96];
+    char too_small[8] = "stale";
+    size_t required = 0U;
+
+    PD_TEST_ASSERT(pd_receiver_session_create(&session,
+                                              UINT64_C(1000),
+                                              UINT64_C(5000),
+                                              fake_random_fill,
+                                              &seed) == PD_RECEIVER_SESSION_OK);
+
+    PD_TEST_ASSERT(pd_receiver_session_build_url(&session,
+                                                 "https://send.printdrop.app/s/",
+                                                 url,
+                                                 sizeof(url),
+                                                 &required) == PD_SESSION_URL_OK);
+    PD_TEST_ASSERT(strcmp(url,
+                          "https://send.printdrop.app/s/000102030405060708090a0b0c0d0e0f") == 0);
+    PD_TEST_ASSERT(required == strlen(url) + 1U);
+
+    PD_TEST_ASSERT(pd_receiver_session_build_url(&session,
+                                                 "http://192.168.1.12:47821/s/",
+                                                 url,
+                                                 sizeof(url),
+                                                 NULL) == PD_SESSION_URL_OK);
+    PD_TEST_ASSERT(strstr(url, session.token) != NULL);
+
+    PD_TEST_ASSERT(pd_receiver_session_build_url(&session,
+                                                 "https://send.printdrop.app/s/",
+                                                 too_small,
+                                                 sizeof(too_small),
+                                                 &required) == PD_SESSION_URL_BUFFER_TOO_SMALL);
+    PD_TEST_ASSERT(too_small[0] == '\0');
+    PD_TEST_ASSERT(required > sizeof(too_small));
+
+    pd_receiver_session_close(&session);
+    PD_TEST_ASSERT(pd_receiver_session_build_url(&session,
+                                                 "https://send.printdrop.app/s/",
+                                                 url,
+                                                 sizeof(url),
+                                                 NULL) == PD_SESSION_URL_SESSION_UNAVAILABLE);
+}
+
 int main(void)
 {
     test_protocol_message_types();
@@ -258,6 +305,7 @@ int main(void)
     test_transport_contract();
     test_receiver_session_lifecycle();
     test_receiver_session_expiry_and_failures();
+    test_session_url_builder();
 
     if (failures != 0) {
         fprintf(stderr, "%d test assertion(s) failed.\n", failures);
