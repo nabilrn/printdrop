@@ -149,7 +149,7 @@ if(WIN32)
     target_link_libraries(printdrop_core PRIVATE bcrypt ws2_32 CURL::libcurl_static)
 
     add_executable(printdrop WIN32 src/win32_main.c)
-    target_link_libraries(printdrop PRIVATE printdrop_core user32 gdi32)
+    target_link_libraries(printdrop PRIVATE printdrop_core user32 gdi32 shell32)
     target_compile_definitions(printdrop PRIVATE
         WINVER=0x0601
         _WIN32_WINNT=0x0601

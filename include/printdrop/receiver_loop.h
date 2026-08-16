@@ -39,7 +39,8 @@ typedef struct pd_receiver_loop_io_ops {
 typedef uint64_t (*pd_receiver_loop_progress_fn)(void *context);
 typedef void (*pd_receiver_loop_event_fn)(void *context,
                                           pd_receiver_loop_event event,
-                                          uint64_t received_bytes);
+                                          uint64_t received_bytes,
+                                          uint64_t total_bytes);
 
 typedef struct pd_receiver_loop {
     const pd_receiver_loop_io_ops *io_ops;
