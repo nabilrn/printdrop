@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-core:
+    name: Linux core - ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc
+            cc: gcc
+          - compiler: clang
+            cc: clang
+    env:
+      CC: ${{ matrix.cc }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure
+        run: cmake -S . -B build -DPD_BUILD_TESTS=ON -DPD_ENABLE_WERROR=ON -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  linux-sanitizers:
+    name: Linux core - ASan + UBSan
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure
+        run: cmake -S . -B build -DPD_BUILD_TESTS=ON -DPD_ENABLE_WERROR=ON -DPD_ENABLE_SANITIZERS=ON -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  windows:
+    name: Windows MSVC - ${{ matrix.arch }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - Win32
+          - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure
+        run: cmake -S . -B build -A ${{ matrix.arch }} -DPD_BUILD_TESTS=ON -DPD_ENABLE_WERROR=ON
+
+      - name: Build
+        run: cmake --build build --config Debug --parallel
+
+      - name: Test
+        run: ctest --test-dir build -C Debug --output-on-failure
