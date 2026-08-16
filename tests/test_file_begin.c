@@ -23,6 +23,7 @@ static void fill_digest(uint8_t digest[PD_SHA256_BYTES])
 
 static void test_file_begin_round_trip(void)
 {
+    static const char filename[] = "skripsi-final.pdf";
     pd_file_begin source;
     pd_file_begin decoded;
     uint8_t payload[PD_FILE_BEGIN_MAX_PAYLOAD];
@@ -31,7 +32,7 @@ static void test_file_begin_round_trip(void)
     memset(&source, 0, sizeof(source));
     source.file_size = UINT64_C(0x0102030405060708);
     fill_digest(source.sha256);
-    strcpy(source.filename, "skripsi-final.pdf");
+    memcpy(source.filename, filename, sizeof(filename));
 
     PD_TEST_ASSERT(pd_file_begin_encode(&source, payload, sizeof(payload), &written) ==
                    PD_FILE_BEGIN_OK);
@@ -49,6 +50,7 @@ static void test_file_begin_round_trip(void)
 
 static void test_file_begin_rejects_bad_sizes(void)
 {
+    static const char filename[] = "a.pdf";
     pd_file_begin metadata;
     uint8_t payload[PD_FILE_BEGIN_MAX_PAYLOAD];
     size_t written = 77U;
@@ -59,7 +61,7 @@ static void test_file_begin_rejects_bad_sizes(void)
                    PD_FILE_BEGIN_INVALID_FILENAME);
     PD_TEST_ASSERT(written == 0U);
 
-    strcpy(metadata.filename, "a.pdf");
+    memcpy(metadata.filename, filename, sizeof(filename));
     PD_TEST_ASSERT(pd_file_begin_encode(&metadata,
                                         payload,
                                         (size_t)PD_FILE_BEGIN_FIXED_SIZE,
