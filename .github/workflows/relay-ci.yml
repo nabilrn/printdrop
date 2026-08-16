@@ -29,7 +29,9 @@ jobs:
 
       - name: Format
         working-directory: relay
-        run: test -z "$(gofmt -l .)"
+        run: |
+          gofmt -d .
+          test -z "$(gofmt -l .)"
 
       - name: Vet
         working-directory: relay
