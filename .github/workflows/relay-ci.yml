@@ -27,11 +27,12 @@ jobs:
           go-version: '1.26.x'
           cache: false
 
-      - name: Materialize module checksums
+      - name: Verify modules
         working-directory: relay
         run: |
-          go mod tidy
-          cat go.sum
+          go mod download
+          go mod verify
+          test -z "$(git status --porcelain -- go.mod go.sum)"
 
       - name: Format
         working-directory: relay
