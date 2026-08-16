@@ -68,6 +68,7 @@ add_library(printdrop_core STATIC
     src/qr.c
     src/frame.c
     src/filename.c
+    src/file_receive.c
 )
 
 target_include_directories(printdrop_core
@@ -110,8 +111,13 @@ if(PD_BUILD_TESTS)
     target_link_libraries(printdrop_filename_tests PRIVATE printdrop_core)
     pd_apply_warnings(printdrop_filename_tests)
 
+    add_executable(printdrop_file_receive_tests tests/test_file_receive.c)
+    target_link_libraries(printdrop_file_receive_tests PRIVATE printdrop_core)
+    pd_apply_warnings(printdrop_file_receive_tests)
+
     add_test(NAME printdrop_core_tests COMMAND printdrop_core_tests)
     add_test(NAME printdrop_qr_tests COMMAND printdrop_qr_tests)
     add_test(NAME printdrop_frame_tests COMMAND printdrop_frame_tests)
     add_test(NAME printdrop_filename_tests COMMAND printdrop_filename_tests)
+    add_test(NAME printdrop_file_receive_tests COMMAND printdrop_file_receive_tests)
 endif()
