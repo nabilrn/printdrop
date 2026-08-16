@@ -1,0 +1,31 @@
+name: Web CI
+
+on:
+  push:
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-ci.yml'
+  pull_request:
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  protocol:
+    name: Browser protocol - Node
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+          cache: false
+
+      - name: Test protocol codec
+        run: node --test web/protocol.test.js
