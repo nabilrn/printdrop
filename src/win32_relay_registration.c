@@ -8,7 +8,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 static bool pd_lower_hex_is_valid(const char *value, size_t expected_length)
@@ -26,6 +26,28 @@ static bool pd_lower_hex_is_valid(const char *value, size_t expected_length)
             return false;
         }
     }
+    return true;
+}
+
+static bool pd_https_url_is_valid(const char *url)
+{
+    static const char prefix[] = "https://";
+    return url != NULL && strlen(url) > sizeof(prefix) - 1U &&
+           memcmp(url, prefix, sizeof(prefix) - 1U) == 0;
+}
+
+static bool pd_append_header(struct curl_slist **headers, const char *value)
+{
+    struct curl_slist *updated;
+
+    if (headers == NULL || value == NULL) {
+        return false;
+    }
+    updated = curl_slist_append(*headers, value);
+    if (updated == NULL) {
+        return false;
+    }
+    *headers = updated;
     return true;
 }
 
@@ -61,6 +83,9 @@ pd_relay_registration_result pd_win32_relay_register_session(const char *registr
     if (registration_url == NULL || session_id == NULL || receiver_secret == NULL) {
         return PD_RELAY_REGISTRATION_INVALID_ARGUMENT;
     }
+    if (!pd_https_url_is_valid(registration_url)) {
+        return PD_RELAY_REGISTRATION_INVALID_ARGUMENT;
+    }
     if (!pd_lower_hex_is_valid(session_id, (size_t)PD_SESSION_TOKEN_HEX_CHARS)) {
         return PD_RELAY_REGISTRATION_INVALID_SESSION_ID;
     }
@@ -83,11 +108,11 @@ pd_relay_registration_result pd_win32_relay_register_session(const char *registr
            sizeof(json_suffix));
     body_length = strlen(body);
 
-    headers = curl_slist_append(headers, auth_header);
-    headers = curl_slist_append(headers, "Content-Type: application/json");
-    headers = curl_slist_append(headers, "Accept: application/json");
-    headers = curl_slist_append(headers, "Expect:");
-    if (headers == NULL) {
+    if (!pd_append_header(&headers, auth_header) ||
+        !pd_append_header(&headers, "Content-Type: application/json") ||
+        !pd_append_header(&headers, "Accept: application/json") ||
+        !pd_append_header(&headers, "Expect:")) {
+        curl_slist_free_all(headers);
         return PD_RELAY_REGISTRATION_CURL_ERROR;
     }
 
