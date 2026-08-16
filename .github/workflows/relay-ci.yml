@@ -27,6 +27,12 @@ jobs:
           go-version: '1.26.x'
           cache: false
 
+      - name: Materialize module checksums
+        working-directory: relay
+        run: |
+          go mod tidy
+          cat go.sum
+
       - name: Format
         working-directory: relay
         run: test -z "$(gofmt -l .)"
