@@ -66,6 +66,7 @@ add_library(printdrop_core STATIC
     src/receiver_session.c
     src/session_url.c
     src/qr.c
+    src/frame.c
 )
 
 target_include_directories(printdrop_core
@@ -100,6 +101,11 @@ if(PD_BUILD_TESTS)
     target_link_libraries(printdrop_qr_tests PRIVATE printdrop_core)
     pd_apply_warnings(printdrop_qr_tests)
 
+    add_executable(printdrop_frame_tests tests/test_frame.c)
+    target_link_libraries(printdrop_frame_tests PRIVATE printdrop_core)
+    pd_apply_warnings(printdrop_frame_tests)
+
     add_test(NAME printdrop_core_tests COMMAND printdrop_core_tests)
     add_test(NAME printdrop_qr_tests COMMAND printdrop_qr_tests)
+    add_test(NAME printdrop_frame_tests COMMAND printdrop_frame_tests)
 endif()
