@@ -72,7 +72,6 @@ pd_win32_receiver_runtime_result pd_win32_receiver_run_session(
     pd_receiver_loop loop;
     pd_win32_runtime_io io;
     pd_receiver_loop_result loop_result;
-    long http_status = 0L;
 
     if (relay_https_base_url == NULL || session == NULL || jobs_root_directory == NULL ||
         session->state != PD_RECEIVER_SESSION_WAITING || session->token[0] == '\0' ||
@@ -93,8 +92,7 @@ pd_win32_receiver_runtime_result pd_win32_receiver_run_session(
     if (pd_win32_relay_register_session(registration_url,
                                         session->token,
                                         session->receiver_secret,
-                                        &http_status) != PD_RELAY_REGISTRATION_OK) {
-        (void)http_status;
+                                        NULL) != PD_RELAY_REGISTRATION_OK) {
         return PD_WIN32_RECEIVER_RUNTIME_REGISTRATION_ERROR;
     }
 
@@ -141,8 +139,14 @@ pd_win32_receiver_runtime_result pd_win32_receiver_run_session(
     pd_win32_relay_client_cleanup(&relay);
     pd_receiver_session_close(session);
 
-    return loop_result == PD_RECEIVER_LOOP_OK ? PD_WIN32_RECEIVER_RUNTIME_OK
-                                              : PD_WIN32_RECEIVER_RUNTIME_PROTOCOL_ERROR;
+    if (loop_result == PD_RECEIVER_LOOP_OK) {
+        return PD_WIN32_RECEIVER_RUNTIME_OK;
+    }
+    if (loop_result == PD_RECEIVER_LOOP_RECEIVE_ERROR ||
+        loop_result == PD_RECEIVER_LOOP_SEND_ERROR) {
+        return PD_WIN32_RECEIVER_RUNTIME_RELAY_ERROR;
+    }
+    return PD_WIN32_RECEIVER_RUNTIME_PROTOCOL_ERROR;
 }
 
 #endif
