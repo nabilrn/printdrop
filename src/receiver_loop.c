@@ -7,10 +7,22 @@ static uint64_t pd_loop_received_bytes(const pd_receiver_loop *loop)
     return loop->progress == NULL ? UINT64_C(0) : loop->progress(loop->progress_context);
 }
 
+static uint64_t pd_loop_total_bytes(const pd_receiver_loop *loop)
+{
+    if (loop == NULL || loop->protocol == NULL ||
+        loop->protocol->state == PD_RECEIVER_PROTOCOL_WAIT_FILE) {
+        return UINT64_C(0);
+    }
+    return loop->protocol->current_file.file_size;
+}
+
 static void pd_loop_emit(pd_receiver_loop *loop, pd_receiver_loop_event event)
 {
     if (loop->event_callback != NULL) {
-        loop->event_callback(loop->event_context, event, pd_loop_received_bytes(loop));
+        loop->event_callback(loop->event_context,
+                             event,
+                             pd_loop_received_bytes(loop),
+                             pd_loop_total_bytes(loop));
     }
 }
 
