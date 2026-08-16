@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PrintDrop</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="shell">
+    <p class="eyebrow">PRINTDROP</p>
+    <h1>Send a file</h1>
+    <p class="hint">No login. Select a file and send it to this receiver.</p>
+    <label class="picker">
+      <span>Select file</span>
+      <input id="file" type="file">
+    </label>
+    <p id="selection" class="selection">No file selected</p>
+    <button id="send" type="button" disabled>Send</button>
+    <p class="status" id="status">Sender shell only. Transfer transport is not implemented yet.</p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

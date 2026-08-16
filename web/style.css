@@ -1,0 +1,65 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: Canvas;
+  color: CanvasText;
+}
+
+.shell {
+  width: min(92vw, 30rem);
+  padding: 2rem;
+  border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+  border-radius: 1rem;
+}
+
+.eyebrow {
+  font: 700 0.75rem/1 monospace;
+  letter-spacing: 0.18em;
+}
+
+h1 {
+  margin-bottom: 0.5rem;
+}
+
+.hint,
+.selection,
+.status {
+  opacity: 0.72;
+}
+
+.picker {
+  display: block;
+  padding: 1rem;
+  margin: 1.5rem 0 0.75rem;
+  border: 1px dashed currentColor;
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+
+.picker input {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+button {
+  width: 100%;
+  min-height: 3rem;
+  font: inherit;
+}
+
+.status {
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
