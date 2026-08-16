@@ -2,6 +2,7 @@
 #define PRINTDROP_FILE_RECEIVE_H
 
 #include "printdrop/frame.h"
+#include "printdrop/integrity.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -37,22 +38,34 @@ typedef enum pd_file_receive_result {
     PD_FILE_RECEIVE_CHUNK_TOO_LARGE,
     PD_FILE_RECEIVE_EXCEEDS_EXPECTED_SIZE,
     PD_FILE_RECEIVE_INCOMPLETE,
-    PD_FILE_RECEIVE_SINK_ERROR
+    PD_FILE_RECEIVE_SINK_ERROR,
+    PD_FILE_RECEIVE_INTEGRITY_ERROR,
+    PD_FILE_RECEIVE_INTEGRITY_MISMATCH
 } pd_file_receive_result;
 
 typedef struct pd_file_receiver {
     const pd_file_sink_ops *sink_ops;
     void *sink_context;
+    const pd_integrity_ops *integrity_ops;
+    void *integrity_context;
+    uint8_t expected_sha256[PD_SHA256_BYTES];
     uint64_t expected_bytes;
     uint64_t received_bytes;
     pd_file_receive_state state;
     bool sink_started;
+    bool integrity_configured;
+    bool integrity_started;
 } pd_file_receiver;
 
 pd_file_receive_result pd_file_receiver_init(pd_file_receiver *receiver,
                                              const pd_file_sink_ops *sink_ops,
                                              void *sink_context,
                                              uint64_t expected_bytes);
+pd_file_receive_result pd_file_receiver_configure_integrity(
+    pd_file_receiver *receiver,
+    const pd_integrity_ops *integrity_ops,
+    void *integrity_context,
+    const uint8_t expected_sha256[PD_SHA256_BYTES]);
 pd_file_receive_result pd_file_receiver_begin(pd_file_receiver *receiver);
 pd_file_receive_result pd_file_receiver_write(pd_file_receiver *receiver,
                                               const uint8_t *data,

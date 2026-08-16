@@ -8,14 +8,30 @@ static bool pd_file_sink_is_configured(const pd_file_sink_ops *ops)
            ops->abort != NULL;
 }
 
-static pd_file_receive_result pd_file_receiver_fail(pd_file_receiver *receiver)
+static bool pd_integrity_is_configured(const pd_integrity_ops *ops)
 {
+    return ops != NULL && ops->begin != NULL && ops->update != NULL && ops->finish != NULL &&
+           ops->abort != NULL;
+}
+
+static void pd_file_receiver_abort_resources(pd_file_receiver *receiver)
+{
+    if (receiver->integrity_started) {
+        receiver->integrity_ops->abort(receiver->integrity_context);
+        receiver->integrity_started = false;
+    }
     if (receiver->sink_started) {
         receiver->sink_ops->abort(receiver->sink_context);
         receiver->sink_started = false;
     }
+}
+
+static pd_file_receive_result pd_file_receiver_fail(pd_file_receiver *receiver,
+                                                    pd_file_receive_result result)
+{
+    pd_file_receiver_abort_resources(receiver);
     receiver->state = PD_FILE_RECEIVE_FAILED;
-    return PD_FILE_RECEIVE_SINK_ERROR;
+    return result;
 }
 
 pd_file_receive_result pd_file_receiver_init(pd_file_receiver *receiver,
@@ -35,6 +51,26 @@ pd_file_receive_result pd_file_receiver_init(pd_file_receiver *receiver,
     return PD_FILE_RECEIVE_OK;
 }
 
+pd_file_receive_result pd_file_receiver_configure_integrity(
+    pd_file_receiver *receiver,
+    const pd_integrity_ops *integrity_ops,
+    void *integrity_context,
+    const uint8_t expected_sha256[PD_SHA256_BYTES])
+{
+    if (receiver == NULL || !pd_integrity_is_configured(integrity_ops) || expected_sha256 == NULL) {
+        return PD_FILE_RECEIVE_INVALID_ARGUMENT;
+    }
+    if (receiver->state != PD_FILE_RECEIVE_IDLE || receiver->sink_started) {
+        return PD_FILE_RECEIVE_INVALID_STATE;
+    }
+
+    receiver->integrity_ops = integrity_ops;
+    receiver->integrity_context = integrity_context;
+    memcpy(receiver->expected_sha256, expected_sha256, sizeof(receiver->expected_sha256));
+    receiver->integrity_configured = true;
+    return PD_FILE_RECEIVE_OK;
+}
+
 pd_file_receive_result pd_file_receiver_begin(pd_file_receiver *receiver)
 {
     if (receiver == NULL || !pd_file_sink_is_configured(receiver->sink_ops)) {
@@ -50,8 +86,15 @@ pd_file_receive_result pd_file_receiver_begin(pd_file_receiver *receiver)
         receiver->state = PD_FILE_RECEIVE_FAILED;
         return PD_FILE_RECEIVE_SINK_ERROR;
     }
-
     receiver->sink_started = true;
+
+    if (receiver->integrity_configured) {
+        if (receiver->integrity_ops->begin(receiver->integrity_context) != PD_INTEGRITY_OK) {
+            return pd_file_receiver_fail(receiver, PD_FILE_RECEIVE_INTEGRITY_ERROR);
+        }
+        receiver->integrity_started = true;
+    }
+
     receiver->state = PD_FILE_RECEIVE_RECEIVING;
     return PD_FILE_RECEIVE_OK;
 }
@@ -88,7 +131,13 @@ pd_file_receive_result pd_file_receiver_write(pd_file_receiver *receiver,
     if (receiver->sink_ops->write(receiver->sink_context, data, data_size, &bytes_written) !=
             PD_FILE_SINK_OK ||
         bytes_written != data_size) {
-        return pd_file_receiver_fail(receiver);
+        return pd_file_receiver_fail(receiver, PD_FILE_RECEIVE_SINK_ERROR);
+    }
+
+    if (receiver->integrity_configured &&
+        receiver->integrity_ops->update(receiver->integrity_context, data, data_size) !=
+            PD_INTEGRITY_OK) {
+        return pd_file_receiver_fail(receiver, PD_FILE_RECEIVE_INTEGRITY_ERROR);
     }
 
     receiver->received_bytes += data_size_u64;
@@ -97,6 +146,8 @@ pd_file_receive_result pd_file_receiver_write(pd_file_receiver *receiver,
 
 pd_file_receive_result pd_file_receiver_finish(pd_file_receiver *receiver)
 {
+    uint8_t actual_sha256[PD_SHA256_BYTES];
+
     if (receiver == NULL) {
         return PD_FILE_RECEIVE_INVALID_ARGUMENT;
     }
@@ -109,8 +160,26 @@ pd_file_receive_result pd_file_receiver_finish(pd_file_receiver *receiver)
         return PD_FILE_RECEIVE_INCOMPLETE;
     }
 
+    if (receiver->integrity_configured) {
+        if (!receiver->integrity_started ||
+            receiver->integrity_ops->finish(receiver->integrity_context, actual_sha256) !=
+                PD_INTEGRITY_OK) {
+            return pd_file_receiver_fail(receiver, PD_FILE_RECEIVE_INTEGRITY_ERROR);
+        }
+        receiver->integrity_started = false;
+
+        if (!pd_digest_equal(actual_sha256, receiver->expected_sha256)) {
+            if (receiver->sink_started) {
+                receiver->sink_ops->abort(receiver->sink_context);
+                receiver->sink_started = false;
+            }
+            receiver->state = PD_FILE_RECEIVE_FAILED;
+            return PD_FILE_RECEIVE_INTEGRITY_MISMATCH;
+        }
+    }
+
     if (receiver->sink_ops->commit(receiver->sink_context) != PD_FILE_SINK_OK) {
-        return pd_file_receiver_fail(receiver);
+        return pd_file_receiver_fail(receiver, PD_FILE_RECEIVE_SINK_ERROR);
     }
 
     receiver->sink_started = false;
@@ -124,9 +193,6 @@ void pd_file_receiver_abort(pd_file_receiver *receiver)
         return;
     }
 
-    if (receiver->sink_started) {
-        receiver->sink_ops->abort(receiver->sink_context);
-        receiver->sink_started = false;
-    }
+    pd_file_receiver_abort_resources(receiver);
     receiver->state = PD_FILE_RECEIVE_ABORTED;
 }
