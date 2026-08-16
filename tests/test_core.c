@@ -185,6 +185,8 @@ static void test_transport_contract(void)
 
 static void test_receiver_session_lifecycle(void)
 {
+    static const char expected_secret[] =
+        "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f";
     pd_receiver_session session;
     uint8_t seed = UINT8_C(0);
 
@@ -197,9 +199,14 @@ static void test_receiver_session_lifecycle(void)
     PD_TEST_ASSERT(session.created_at_ms == UINT64_C(1000));
     PD_TEST_ASSERT(session.expires_at_ms == UINT64_C(6000));
     PD_TEST_ASSERT(strcmp(session.token, "000102030405060708090a0b0c0d0e0f") == 0);
+    PD_TEST_ASSERT(strcmp(session.receiver_secret, expected_secret) == 0);
     PD_TEST_ASSERT(pd_receiver_session_token_matches(&session, session.token));
+    PD_TEST_ASSERT(pd_receiver_session_secret_matches(&session, expected_secret));
     PD_TEST_ASSERT(!pd_receiver_session_token_matches(&session,
                                                        "000102030405060708090a0b0c0d0e00"));
+    PD_TEST_ASSERT(!pd_receiver_session_secret_matches(
+        &session,
+        "001112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f"));
 
     PD_TEST_ASSERT(pd_receiver_session_begin_transfer(&session,
                                                       "000102030405060708090a0b0c0d0e00",
@@ -215,6 +222,7 @@ static void test_receiver_session_lifecycle(void)
     pd_receiver_session_close(&session);
     PD_TEST_ASSERT(session.state == PD_RECEIVER_SESSION_CLOSED);
     PD_TEST_ASSERT(session.token[0] == '\0');
+    PD_TEST_ASSERT(session.receiver_secret[0] == '\0');
 }
 
 static void test_receiver_session_expiry_and_failures(void)
@@ -244,8 +252,10 @@ static void test_receiver_session_expiry_and_failures(void)
     PD_TEST_ASSERT(!pd_receiver_session_expire_if_due(&session, UINT64_C(149)));
     PD_TEST_ASSERT(pd_receiver_session_expire_if_due(&session, UINT64_C(150)));
     PD_TEST_ASSERT(session.state == PD_RECEIVER_SESSION_EXPIRED);
+    PD_TEST_ASSERT(session.token[0] == '\0');
+    PD_TEST_ASSERT(session.receiver_secret[0] == '\0');
     PD_TEST_ASSERT(pd_receiver_session_begin_transfer(&session,
-                                                      session.token,
+                                                      "deadbeefdeadbeefdeadbeefdeadbeef",
                                                       UINT64_C(150)) ==
                    PD_RECEIVER_SESSION_EXPIRED_RESULT);
 }
@@ -271,6 +281,7 @@ static void test_session_url_builder(void)
                                                  &required) == PD_SESSION_URL_OK);
     PD_TEST_ASSERT(strcmp(url,
                           "https://send.printdrop.app/s/000102030405060708090a0b0c0d0e0f") == 0);
+    PD_TEST_ASSERT(strstr(url, session.receiver_secret) == NULL);
     PD_TEST_ASSERT(required == strlen(url) + 1U);
 
     PD_TEST_ASSERT(pd_receiver_session_build_url(&session,

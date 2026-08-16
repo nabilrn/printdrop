@@ -73,6 +73,8 @@ add_library(printdrop_core STATIC
     src/integrity.c
     src/file_begin.c
     src/receiver_protocol.c
+    src/secure_zero.c
+    src/ack.c
 )
 
 target_include_directories(printdrop_core
@@ -195,6 +197,10 @@ if(PD_BUILD_TESTS)
     target_link_libraries(printdrop_receiver_protocol_tests PRIVATE printdrop_core)
     pd_apply_warnings(printdrop_receiver_protocol_tests)
 
+    add_executable(printdrop_ack_tests tests/test_ack.c)
+    target_link_libraries(printdrop_ack_tests PRIVATE printdrop_core)
+    pd_apply_warnings(printdrop_ack_tests)
+
     add_test(NAME printdrop_core_tests COMMAND printdrop_core_tests)
     add_test(NAME printdrop_qr_tests COMMAND printdrop_qr_tests)
     add_test(NAME printdrop_frame_tests COMMAND printdrop_frame_tests)
@@ -205,6 +211,7 @@ if(PD_BUILD_TESTS)
     add_test(NAME printdrop_file_integrity_tests COMMAND printdrop_file_integrity_tests)
     add_test(NAME printdrop_file_begin_tests COMMAND printdrop_file_begin_tests)
     add_test(NAME printdrop_receiver_protocol_tests COMMAND printdrop_receiver_protocol_tests)
+    add_test(NAME printdrop_ack_tests COMMAND printdrop_ack_tests)
 
     if(WIN32)
         add_executable(printdrop_win32_file_sink_tests tests/test_win32_file_sink.c)
