@@ -70,6 +70,7 @@ add_library(printdrop_core STATIC
     src/filename.c
     src/file_receive.c
     src/job_id.c
+    src/integrity.c
 )
 
 target_include_directories(printdrop_core
@@ -81,7 +82,8 @@ target_link_libraries(printdrop_core PRIVATE printdrop_qrcodegen)
 pd_apply_warnings(printdrop_core)
 
 if(WIN32)
-    target_sources(printdrop_core PRIVATE src/win32_file_sink.c)
+    target_sources(printdrop_core PRIVATE src/win32_file_sink.c src/win32_sha256.c)
+    target_link_libraries(printdrop_core PRIVATE bcrypt)
 
     add_executable(printdrop WIN32 src/win32_main.c)
     target_link_libraries(printdrop PRIVATE printdrop_core user32 gdi32)
@@ -122,12 +124,22 @@ if(PD_BUILD_TESTS)
     target_link_libraries(printdrop_job_id_tests PRIVATE printdrop_core)
     pd_apply_warnings(printdrop_job_id_tests)
 
+    add_executable(printdrop_integrity_tests tests/test_integrity.c)
+    target_link_libraries(printdrop_integrity_tests PRIVATE printdrop_core)
+    pd_apply_warnings(printdrop_integrity_tests)
+
+    add_executable(printdrop_file_integrity_tests tests/test_file_integrity.c)
+    target_link_libraries(printdrop_file_integrity_tests PRIVATE printdrop_core)
+    pd_apply_warnings(printdrop_file_integrity_tests)
+
     add_test(NAME printdrop_core_tests COMMAND printdrop_core_tests)
     add_test(NAME printdrop_qr_tests COMMAND printdrop_qr_tests)
     add_test(NAME printdrop_frame_tests COMMAND printdrop_frame_tests)
     add_test(NAME printdrop_filename_tests COMMAND printdrop_filename_tests)
     add_test(NAME printdrop_file_receive_tests COMMAND printdrop_file_receive_tests)
     add_test(NAME printdrop_job_id_tests COMMAND printdrop_job_id_tests)
+    add_test(NAME printdrop_integrity_tests COMMAND printdrop_integrity_tests)
+    add_test(NAME printdrop_file_integrity_tests COMMAND printdrop_file_integrity_tests)
 
     if(WIN32)
         add_executable(printdrop_win32_file_sink_tests tests/test_win32_file_sink.c)
@@ -141,5 +153,15 @@ if(PD_BUILD_TESTS)
         )
         pd_apply_warnings(printdrop_win32_file_sink_tests)
         add_test(NAME printdrop_win32_file_sink_tests COMMAND printdrop_win32_file_sink_tests)
+
+        add_executable(printdrop_win32_sha256_tests tests/test_win32_sha256.c)
+        target_link_libraries(printdrop_win32_sha256_tests PRIVATE printdrop_core)
+        target_compile_definitions(printdrop_win32_sha256_tests PRIVATE
+            WINVER=0x0601
+            _WIN32_WINNT=0x0601
+            NTDDI_VERSION=0x06010000
+        )
+        pd_apply_warnings(printdrop_win32_sha256_tests)
+        add_test(NAME printdrop_win32_sha256_tests COMMAND printdrop_win32_sha256_tests)
     endif()
 endif()
