@@ -84,13 +84,61 @@ target_link_libraries(printdrop_core PRIVATE printdrop_qrcodegen)
 pd_apply_warnings(printdrop_core)
 
 if(WIN32)
+    set(BUILD_CURL_EXE OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+    set(CURL_STATIC_CRT ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
+    set(CURL_TARGET_WINDOWS_VERSION "0x0601" CACHE STRING "" FORCE)
+    set(CURL_USE_SCHANNEL ON CACHE BOOL "" FORCE)
+    set(CURL_USE_OPENSSL OFF CACHE BOOL "" FORCE)
+    set(CURL_USE_LIBPSL OFF CACHE BOOL "" FORCE)
+    set(CURL_USE_LIBSSH2 OFF CACHE BOOL "" FORCE)
+    set(USE_NGHTTP2 OFF CACHE BOOL "" FORCE)
+    set(CURL_ZLIB OFF CACHE STRING "" FORCE)
+    set(CURL_BROTLI OFF CACHE STRING "" FORCE)
+    set(CURL_ZSTD OFF CACHE STRING "" FORCE)
+    set(BUILD_LIBCURL_DOCS OFF CACHE BOOL "" FORCE)
+    set(BUILD_MISC_DOCS OFF CACHE BOOL "" FORCE)
+    set(ENABLE_CURL_MANUAL OFF CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_DICT ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_FILE ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_FTP ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_GOPHER ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_IMAP ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_LDAP ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_LDAPS ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_MQTT ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_POP3 ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_RTSP ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_SMTP ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_TELNET ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_TFTP ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_WEBSOCKETS OFF CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_ALTSVC ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_COOKIES ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_DOH ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_MIME ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_NETRC ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_PARSEDATE ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_PROGRESS_METER ON CACHE BOOL "" FORCE)
+
+    FetchContent_Declare(
+        curl
+        GIT_REPOSITORY https://github.com/curl/curl.git
+        GIT_TAG 68720b4837284335b2d63cb358f8f6ce65f5bc55
+        GIT_SHALLOW FALSE
+    )
+    FetchContent_MakeAvailable(curl)
+
     target_sources(printdrop_core PRIVATE
         src/win32_file_sink.c
         src/win32_sha256.c
         src/win32_random.c
         src/win32_receive_handler.c
+        src/win32_relay_client.c
     )
-    target_link_libraries(printdrop_core PRIVATE bcrypt)
+    target_link_libraries(printdrop_core PRIVATE bcrypt CURL::libcurl_static)
 
     add_executable(printdrop WIN32 src/win32_main.c)
     target_link_libraries(printdrop PRIVATE printdrop_core user32 gdi32)
@@ -192,5 +240,17 @@ if(PD_BUILD_TESTS)
         )
         pd_apply_warnings(printdrop_win32_receive_handler_tests)
         add_test(NAME printdrop_win32_receive_handler_tests COMMAND printdrop_win32_receive_handler_tests)
+
+        add_executable(printdrop_win32_relay_client_tests tests/test_win32_relay_client.c)
+        target_link_libraries(printdrop_win32_relay_client_tests PRIVATE printdrop_core)
+        target_compile_definitions(printdrop_win32_relay_client_tests PRIVATE
+            WINVER=0x0601
+            _WIN32_WINNT=0x0601
+            NTDDI_VERSION=0x06010000
+            UNICODE
+            _UNICODE
+        )
+        pd_apply_warnings(printdrop_win32_relay_client_tests)
+        add_test(NAME printdrop_win32_relay_client_tests COMMAND printdrop_win32_relay_client_tests)
     endif()
 endif()
