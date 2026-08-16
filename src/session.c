@@ -1,5 +1,7 @@
 #include "printdrop/session.h"
 
+#include <stddef.h>
+
 void pd_transfer_init(pd_transfer_progress *progress, uint64_t expected_bytes)
 {
     if (progress == NULL) {
