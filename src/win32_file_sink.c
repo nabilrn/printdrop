@@ -125,7 +125,7 @@ static pd_file_sink_status pd_win32_sink_write(void *context,
     *bytes_written = 0U;
 
     if (sink == NULL || !pd_win32_handle_is_open(sink) ||
-        (data == NULL && data_size != 0U) || data_size > (size_t)DWORD_MAX) {
+        (data == NULL && data_size != 0U) || data_size > (size_t)MAXDWORD) {
         return PD_FILE_SINK_IO_ERROR;
     }
 
