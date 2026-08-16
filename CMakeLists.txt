@@ -84,7 +84,12 @@ target_link_libraries(printdrop_core PRIVATE printdrop_qrcodegen)
 pd_apply_warnings(printdrop_core)
 
 if(WIN32)
-    target_sources(printdrop_core PRIVATE src/win32_file_sink.c src/win32_sha256.c)
+    target_sources(printdrop_core PRIVATE
+        src/win32_file_sink.c
+        src/win32_sha256.c
+        src/win32_random.c
+        src/win32_receive_handler.c
+    )
     target_link_libraries(printdrop_core PRIVATE bcrypt)
 
     add_executable(printdrop WIN32 src/win32_main.c)
@@ -175,5 +180,17 @@ if(PD_BUILD_TESTS)
         )
         pd_apply_warnings(printdrop_win32_sha256_tests)
         add_test(NAME printdrop_win32_sha256_tests COMMAND printdrop_win32_sha256_tests)
+
+        add_executable(printdrop_win32_receive_handler_tests tests/test_win32_receive_handler.c)
+        target_link_libraries(printdrop_win32_receive_handler_tests PRIVATE printdrop_core)
+        target_compile_definitions(printdrop_win32_receive_handler_tests PRIVATE
+            WINVER=0x0601
+            _WIN32_WINNT=0x0601
+            NTDDI_VERSION=0x06010000
+            UNICODE
+            _UNICODE
+        )
+        pd_apply_warnings(printdrop_win32_receive_handler_tests)
+        add_test(NAME printdrop_win32_receive_handler_tests COMMAND printdrop_win32_receive_handler_tests)
     endif()
 endif()
