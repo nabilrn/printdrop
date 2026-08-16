@@ -1,3 +1,4 @@
+#include "printdrop/receiver_session.h"
 #include "printdrop/win32_relay_client.h"
 
 #include <stdio.h>
@@ -15,6 +16,8 @@ static int failures = 0;
 
 int main(void)
 {
+    static const char receiver_secret[] =
+        "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f";
     pd_win32_relay_client client;
     const char *curl_version;
     const char *ssl_backend;
@@ -34,22 +37,34 @@ int main(void)
 
     PD_TEST_ASSERT(pd_win32_relay_client_init(
                        &client,
-                       "wss://relay.printdrop.app/v1/receiver/0123456789abcdef") ==
-                   PD_RELAY_CLIENT_OK);
+                       "wss://relay.printdrop.app/v1/receiver/0123456789abcdef",
+                       receiver_secret) == PD_RELAY_CLIENT_OK);
     PD_TEST_ASSERT(client.state == PD_RELAY_CLIENT_PREPARED);
     PD_TEST_ASSERT(client.easy_handle != NULL);
+    PD_TEST_ASSERT(client.request_headers != NULL);
+    PD_TEST_ASSERT(client.message_buffer != NULL);
     PD_TEST_ASSERT(strcmp(client.url,
                           "wss://relay.printdrop.app/v1/receiver/0123456789abcdef") == 0);
+    PD_TEST_ASSERT(pd_win32_relay_client_send_frame(&client, NULL, NULL, 0U) ==
+                   PD_RELAY_CLIENT_INVALID_ARGUMENT);
     pd_win32_relay_client_cleanup(&client);
     PD_TEST_ASSERT(client.state == PD_RELAY_CLIENT_CLOSED);
     PD_TEST_ASSERT(client.easy_handle == NULL);
+    PD_TEST_ASSERT(client.request_headers == NULL);
+    PD_TEST_ASSERT(client.message_buffer == NULL);
     PD_TEST_ASSERT(client.url[0] == '\0');
 
-    PD_TEST_ASSERT(pd_win32_relay_client_init(&client, "https://relay.printdrop.app") ==
+    PD_TEST_ASSERT(pd_win32_relay_client_init(&client,
+                                              "https://relay.printdrop.app",
+                                              receiver_secret) ==
                    PD_RELAY_CLIENT_INVALID_URL);
-    PD_TEST_ASSERT(pd_win32_relay_client_init(&client, "wss://") ==
-                   PD_RELAY_CLIENT_INVALID_URL);
-    PD_TEST_ASSERT(pd_win32_relay_client_init(NULL, "wss://relay.printdrop.app") ==
+    PD_TEST_ASSERT(pd_win32_relay_client_init(&client,
+                                              "wss://relay.printdrop.app",
+                                              "not-a-secret") ==
+                   PD_RELAY_CLIENT_INVALID_SECRET);
+    PD_TEST_ASSERT(pd_win32_relay_client_init(NULL,
+                                              "wss://relay.printdrop.app",
+                                              receiver_secret) ==
                    PD_RELAY_CLIENT_INVALID_ARGUMENT);
 
     pd_win32_curl_global_cleanup();
