@@ -76,6 +76,8 @@ add_library(printdrop_core STATIC
     src/secure_zero.c
     src/ack.c
     src/relay_message.c
+    src/relay_endpoint.c
+    src/receiver_loop.c
 )
 
 target_include_directories(printdrop_core
@@ -140,6 +142,8 @@ if(WIN32)
         src/win32_random.c
         src/win32_receive_handler.c
         src/win32_relay_client.c
+        src/win32_relay_registration.c
+        src/win32_receiver_runtime.c
     )
     target_link_libraries(printdrop_core PRIVATE bcrypt ws2_32 CURL::libcurl_static)
 
@@ -206,6 +210,14 @@ if(PD_BUILD_TESTS)
     target_link_libraries(printdrop_relay_message_tests PRIVATE printdrop_core)
     pd_apply_warnings(printdrop_relay_message_tests)
 
+    add_executable(printdrop_relay_endpoint_tests tests/test_relay_endpoint.c)
+    target_link_libraries(printdrop_relay_endpoint_tests PRIVATE printdrop_core)
+    pd_apply_warnings(printdrop_relay_endpoint_tests)
+
+    add_executable(printdrop_receiver_loop_tests tests/test_receiver_loop.c)
+    target_link_libraries(printdrop_receiver_loop_tests PRIVATE printdrop_core)
+    pd_apply_warnings(printdrop_receiver_loop_tests)
+
     add_test(NAME printdrop_core_tests COMMAND printdrop_core_tests)
     add_test(NAME printdrop_qr_tests COMMAND printdrop_qr_tests)
     add_test(NAME printdrop_frame_tests COMMAND printdrop_frame_tests)
@@ -218,6 +230,8 @@ if(PD_BUILD_TESTS)
     add_test(NAME printdrop_receiver_protocol_tests COMMAND printdrop_receiver_protocol_tests)
     add_test(NAME printdrop_ack_tests COMMAND printdrop_ack_tests)
     add_test(NAME printdrop_relay_message_tests COMMAND printdrop_relay_message_tests)
+    add_test(NAME printdrop_relay_endpoint_tests COMMAND printdrop_relay_endpoint_tests)
+    add_test(NAME printdrop_receiver_loop_tests COMMAND printdrop_receiver_loop_tests)
 
     if(WIN32)
         add_executable(printdrop_win32_file_sink_tests tests/test_win32_file_sink.c)
@@ -265,5 +279,17 @@ if(PD_BUILD_TESTS)
         )
         pd_apply_warnings(printdrop_win32_relay_client_tests)
         add_test(NAME printdrop_win32_relay_client_tests COMMAND printdrop_win32_relay_client_tests)
+
+        add_executable(printdrop_win32_relay_registration_tests tests/test_win32_relay_registration.c)
+        target_link_libraries(printdrop_win32_relay_registration_tests PRIVATE printdrop_core)
+        target_compile_definitions(printdrop_win32_relay_registration_tests PRIVATE
+            WINVER=0x0601
+            _WIN32_WINNT=0x0601
+            NTDDI_VERSION=0x06010000
+            UNICODE
+            _UNICODE
+        )
+        pd_apply_warnings(printdrop_win32_relay_registration_tests)
+        add_test(NAME printdrop_win32_relay_registration_tests COMMAND printdrop_win32_relay_registration_tests)
     endif()
 endif()
