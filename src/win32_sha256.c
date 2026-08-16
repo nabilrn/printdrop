@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <bcrypt.h>
 
+#include <limits.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -100,7 +101,7 @@ static pd_integrity_status pd_win32_sha256_update(void *opaque,
     pd_win32_sha256 *context = (pd_win32_sha256 *)opaque;
 
     if (context == NULL || !context->active || context->hash_handle == NULL ||
-        (data == NULL && data_size != 0U) || data_size > (size_t)MAXULONG) {
+        (data == NULL && data_size != 0U) || data_size > (size_t)ULONG_MAX) {
         return PD_INTEGRITY_ERROR;
     }
 
