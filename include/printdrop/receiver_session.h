@@ -8,6 +8,9 @@
 #define PD_SESSION_TOKEN_BYTES 16U
 #define PD_SESSION_TOKEN_HEX_CHARS (PD_SESSION_TOKEN_BYTES * 2U)
 #define PD_SESSION_TOKEN_CAPACITY (PD_SESSION_TOKEN_HEX_CHARS + 1U)
+#define PD_RECEIVER_SECRET_BYTES 32U
+#define PD_RECEIVER_SECRET_HEX_CHARS (PD_RECEIVER_SECRET_BYTES * 2U)
+#define PD_RECEIVER_SECRET_CAPACITY (PD_RECEIVER_SECRET_HEX_CHARS + 1U)
 
 typedef enum pd_receiver_session_state {
     PD_RECEIVER_SESSION_INACTIVE = 0,
@@ -31,6 +34,7 @@ typedef bool (*pd_random_fill_fn)(void *context, uint8_t *buffer, size_t buffer_
 
 typedef struct pd_receiver_session {
     char token[PD_SESSION_TOKEN_CAPACITY];
+    char receiver_secret[PD_RECEIVER_SECRET_CAPACITY];
     uint64_t created_at_ms;
     uint64_t expires_at_ms;
     pd_receiver_session_state state;
@@ -42,6 +46,7 @@ pd_receiver_session_result pd_receiver_session_create(pd_receiver_session *sessi
                                                       pd_random_fill_fn random_fill,
                                                       void *random_context);
 bool pd_receiver_session_token_matches(const pd_receiver_session *session, const char *candidate);
+bool pd_receiver_session_secret_matches(const pd_receiver_session *session, const char *candidate);
 bool pd_receiver_session_expire_if_due(pd_receiver_session *session, uint64_t now_ms);
 pd_receiver_session_result pd_receiver_session_begin_transfer(pd_receiver_session *session,
                                                               const char *candidate_token,
