@@ -1,4 +1,4 @@
-import './vendor/sha256.min.js';
+import './vendor/js-sha256/build/sha256.min.js';
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -63,7 +63,7 @@ test('builds same-host websocket URLs', () => {
                `ws://127.0.0.1:8080/v1/sender/${id}`);
 });
 
-test('vendored SHA-256 supports bounded incremental hashing', async () => {
+test('pinned SHA-256 supports bounded incremental hashing', async () => {
   assert.equal(typeof globalThis.sha256?.create, 'function');
   const file = fileLike('abc.txt', new TextEncoder().encode('abc'));
   const digest = await hashFileIncremental(file, () => globalThis.sha256.create(), null, 1);

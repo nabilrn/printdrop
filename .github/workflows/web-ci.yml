@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'web/**'
+      - '.gitmodules'
       - '.github/workflows/web-ci.yml'
   pull_request:
     paths:
       - 'web/**'
+      - '.gitmodules'
       - '.github/workflows/web-ci.yml'
 
 permissions:
@@ -15,11 +17,13 @@ permissions:
 
 jobs:
   protocol:
-    name: Browser protocol - Node
+    name: Browser sender - Node
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          submodules: recursive
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -27,5 +31,10 @@ jobs:
           node-version: '24.x'
           cache: false
 
-      - name: Test protocol codec
-        run: node --test web/protocol.test.js
+      - name: Verify pinned SHA-256 source
+        run: |
+          test "$(git -C web/vendor/js-sha256 rev-parse HEAD)" = "9a54fb31d4594762987e1b5d175265f6bac921de"
+          test "$(git hash-object web/vendor/js-sha256/build/sha256.min.js)" = "520a555204ffa721fc6428a890d25079ba9873e3"
+
+      - name: Test browser protocol and sender
+        run: node --test web/protocol.test.js web/sender.test.js
