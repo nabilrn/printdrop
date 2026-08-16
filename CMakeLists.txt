@@ -37,6 +37,8 @@ endfunction()
 add_library(printdrop_core STATIC
     src/protocol.c
     src/session.c
+    src/transport.c
+    src/receiver_session.c
 )
 
 target_include_directories(printdrop_core
