@@ -3,22 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PrintDrop</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="color-scheme" content="light dark">
+  <title>Send with PrintDrop</title>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <main class="shell">
-    <p class="eyebrow">PRINTDROP</p>
-    <h1>Send a file</h1>
-    <p class="hint">No login. Select a file and send it to this receiver.</p>
+    <header>
+      <p class="eyebrow">PRINTDROP</p>
+      <h1>Send a file</h1>
+      <p class="hint">No login. No WhatsApp. Pick a file and send it straight to the print shop.</p>
+    </header>
+
     <label class="picker">
-      <span>Select file</span>
+      <span>Choose file</span>
       <input id="file" type="file">
     </label>
     <p id="selection" class="selection">No file selected</p>
-    <button id="send" type="button" disabled>Send</button>
-    <p class="status" id="status">Sender shell only. Transfer transport is not implemented yet.</p>
+
+    <div class="progress-wrap" aria-live="polite">
+      <progress id="progress" max="100" value="0"></progress>
+      <span id="progress-label"></span>
+    </div>
+
+    <button id="send" type="button" disabled>Send file</button>
+    <p class="status" id="status">Loading session…</p>
+    <p class="privacy">Files are streamed to the receiver and are not stored by PrintDrop relay.</p>
   </main>
-  <script src="app.js"></script>
+  <script src="/vendor/sha256.min.js"></script>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>

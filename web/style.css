@@ -1,65 +1,87 @@
 :root {
-  color-scheme: light dark;
-  font-family: system-ui, sans-serif;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #111;
+  background: #f7f7f5;
+  font-synthesis: none;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
-  margin: 0;
   min-height: 100vh;
+  margin: 0;
   display: grid;
   place-items: center;
-  background: Canvas;
-  color: CanvasText;
+  padding: 24px;
 }
 
 .shell {
-  width: min(92vw, 30rem);
-  padding: 2rem;
-  border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
-  border-radius: 1rem;
+  width: min(100%, 460px);
+  border: 1px solid #d7d7d2;
+  background: #fff;
+  padding: 28px;
 }
 
 .eyebrow {
-  font: 700 0.75rem/1 monospace;
-  letter-spacing: 0.18em;
+  margin: 0 0 20px;
+  font: 700 12px/1 monospace;
+  letter-spacing: .18em;
 }
 
 h1 {
-  margin-bottom: 0.5rem;
+  margin: 0;
+  font-size: clamp(30px, 9vw, 44px);
+  line-height: 1;
+  letter-spacing: -.04em;
 }
 
-.hint,
-.selection,
-.status {
-  opacity: 0.72;
+.hint, .privacy, .status, .selection {
+  color: #61615d;
+  line-height: 1.5;
 }
+
+.hint { margin: 14px 0 28px; }
+.privacy { margin: 20px 0 0; font-size: 12px; }
+.status { min-height: 24px; margin: 14px 0 0; }
+.selection { margin: 12px 0 20px; overflow-wrap: anywhere; }
 
 .picker {
-  display: block;
-  padding: 1rem;
-  margin: 1.5rem 0 0.75rem;
-  border: 1px dashed currentColor;
-  border-radius: 0.75rem;
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #8d8d87;
   cursor: pointer;
+  font-weight: 650;
 }
 
-.picker input {
-  display: block;
-  width: 100%;
-  margin-top: 0.75rem;
-}
+.picker:focus-within { outline: 2px solid currentColor; outline-offset: 3px; }
+.picker input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; }
 
 button {
   width: 100%;
-  min-height: 3rem;
+  min-height: 54px;
+  border: 1px solid #111;
+  border-radius: 0;
+  background: #111;
+  color: #fff;
   font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.status {
-  font-size: 0.85rem;
-  line-height: 1.5;
+button:disabled { cursor: not-allowed; opacity: .38; }
+button:focus-visible { outline: 2px solid #111; outline-offset: 3px; }
+
+.progress-wrap { min-height: 38px; margin-bottom: 16px; }
+progress { width: 100%; height: 8px; border: 0; border-radius: 0; }
+#progress-label { display: block; margin-top: 6px; font: 12px/1.3 monospace; color: #61615d; }
+
+@media (prefers-color-scheme: dark) {
+  :root { color: #f4f4f0; background: #111; }
+  .shell { background: #171715; border-color: #41413d; }
+  .hint, .privacy, .status, .selection, #progress-label { color: #aaa9a2; }
+  .picker { border-color: #6d6d67; }
+  button { background: #f4f4f0; color: #111; border-color: #f4f4f0; }
+  button:focus-visible { outline-color: #f4f4f0; }
 }
