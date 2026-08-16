@@ -20,6 +20,31 @@ if(PD_ENABLE_SANITIZERS AND NOT MSVC)
     add_link_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
 endif()
 
+include(FetchContent)
+FetchContent_Declare(
+    qrcodegen
+    GIT_REPOSITORY https://github.com/nayuki/QR-Code-generator.git
+    GIT_TAG 2c9044de6b049ca25cb3cd1649ed7e27aa055138
+    GIT_SHALLOW FALSE
+)
+FetchContent_GetProperties(qrcodegen)
+if(NOT qrcodegen_POPULATED)
+    FetchContent_Populate(qrcodegen)
+endif()
+
+add_library(printdrop_qrcodegen STATIC
+    ${qrcodegen_SOURCE_DIR}/c/qrcodegen.c
+)
+target_include_directories(printdrop_qrcodegen SYSTEM
+    PUBLIC
+        ${qrcodegen_SOURCE_DIR}/c
+)
+set_target_properties(printdrop_qrcodegen PROPERTIES
+    C_STANDARD 11
+    C_STANDARD_REQUIRED ON
+    C_EXTENSIONS OFF
+)
+
 function(pd_apply_warnings target_name)
     if(MSVC)
         target_compile_options(${target_name} PRIVATE /W4)
@@ -40,12 +65,14 @@ add_library(printdrop_core STATIC
     src/transport.c
     src/receiver_session.c
     src/session_url.c
+    src/qr.c
 )
 
 target_include_directories(printdrop_core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+target_link_libraries(printdrop_core PRIVATE printdrop_qrcodegen)
 
 pd_apply_warnings(printdrop_core)
 
@@ -69,5 +96,10 @@ if(PD_BUILD_TESTS)
     target_link_libraries(printdrop_core_tests PRIVATE printdrop_core)
     pd_apply_warnings(printdrop_core_tests)
 
+    add_executable(printdrop_qr_tests tests/test_qr.c)
+    target_link_libraries(printdrop_qr_tests PRIVATE printdrop_core)
+    pd_apply_warnings(printdrop_qr_tests)
+
     add_test(NAME printdrop_core_tests COMMAND printdrop_core_tests)
+    add_test(NAME printdrop_qr_tests COMMAND printdrop_qr_tests)
 endif()
