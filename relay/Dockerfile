@@ -1,7 +1,7 @@
 FROM golang:1.26 AS build
 
 WORKDIR /src/relay
-COPY relay/go.mod ./
+COPY relay/go.mod relay/go.sum ./
 RUN go mod download
 COPY relay/ ./
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/printdrop-relay .
