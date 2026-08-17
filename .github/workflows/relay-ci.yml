@@ -4,10 +4,16 @@ on:
   push:
     paths:
       - 'relay/**'
+      - 'web/**'
+      - '.gitmodules'
+      - '.dockerignore'
       - '.github/workflows/relay-ci.yml'
   pull_request:
     paths:
       - 'relay/**'
+      - 'web/**'
+      - '.gitmodules'
+      - '.dockerignore'
       - '.github/workflows/relay-ci.yml'
 
 permissions:
@@ -20,6 +26,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          submodules: recursive
 
       - name: Set up Go
         uses: actions/setup-go@v7
@@ -38,3 +46,6 @@ jobs:
       - name: Test with race detector
         working-directory: relay
         run: go test -race ./...
+
+      - name: Build deployable relay image
+        run: docker build -f relay/Dockerfile -t printdrop-relay:test .
