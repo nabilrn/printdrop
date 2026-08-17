@@ -1,3 +1,0 @@
-[submodule "web/vendor/js-sha256"]
-	path = web/vendor/js-sha256
-	url = https://github.com/emn178/js-sha256.git
