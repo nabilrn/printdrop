@@ -1,29 +1,14 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import test from 'node:test';
-import vm from 'node:vm';
 
 import { AckStatus, MessageType, decodeFrame, encodeFrame } from './protocol.js';
+import { createSha256 } from './sha256.js';
 import {
   buildSenderWebSocketUrl,
   hashFileIncremental,
   parseSessionId,
   sendFile,
 } from './sender.js';
-
-function loadBrowserSha256() {
-  const source = fs.readFileSync(new URL('./vendor/js-sha256/build/sha256.min.js', import.meta.url),
-                                 'utf8');
-  const context = { ArrayBuffer, Uint8Array };
-  context.globalThis = context;
-  vm.runInNewContext(source, context, { filename: 'sha256.min.js' });
-  if (!context.sha256 || typeof context.sha256.create !== 'function') {
-    throw new Error('pinned browser SHA-256 build did not expose sha256.create');
-  }
-  return context.sha256;
-}
-
-const browserSha256 = loadBrowserSha256();
 
 function ackFrame(type, receivedBytes, status = AckStatus.OK) {
   const payload = new Uint8Array(12);
@@ -77,9 +62,9 @@ test('builds same-host websocket URLs', () => {
                `ws://127.0.0.1:8080/v1/sender/${id}`);
 });
 
-test('pinned SHA-256 supports bounded incremental hashing', async () => {
+test('first-party SHA-256 supports bounded incremental hashing', async () => {
   const file = fileLike('abc.txt', new TextEncoder().encode('abc'));
-  const digest = await hashFileIncremental(file, () => browserSha256.create(), null, 1);
+  const digest = await hashFileIncremental(file, createSha256, null, 1);
   assert.equal(Buffer.from(digest).toString('hex'),
                'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
 });
@@ -94,7 +79,7 @@ test('sends begin, bounded chunks, and end with ACK backpressure', async () => {
   await sendFile({
     file,
     socket,
-    hasherFactory: () => browserSha256.create(),
+    hasherFactory: createSha256,
     onUploadProgress(current) { progress.push(current); },
     ackTimeoutMs: 1000,
   });

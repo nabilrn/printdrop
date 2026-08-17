@@ -39,7 +39,7 @@ The V0.1 transport is an internet relay because it works across old routers, CGN
 The end-to-end V0.1 receive path is implemented in the repository:
 
 - short-lived receiver sessions and QR URLs;
-- browser sender with incremental SHA-256 and bounded chunking;
+- browser sender with first-party incremental SHA-256 and bounded chunking;
 - authenticated HTTPS receiver registration;
 - bounded WSS relay transport with no cloud file storage;
 - native Win32 receive runtime on a worker thread;
@@ -83,7 +83,6 @@ ctest --test-dir build --output-on-failure
 ### Relay
 
 ```bash
-git submodule update --init --recursive
 docker build -f relay/Dockerfile -t printdrop-relay .
 docker run --rm -p 127.0.0.1:8080:8080 printdrop-relay
 ```

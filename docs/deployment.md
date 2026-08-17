@@ -18,10 +18,9 @@ The relay never stores transferred files. It keeps only short-lived in-memory se
 
 ## Build the container
 
-Initialize repository submodules first because the browser SHA-256 implementation is pinned as a Git submodule.
+No Git submodules are required. The browser sender, including the incremental SHA-256 implementation, is tracked directly in this repository.
 
 ```bash
-git submodule update --init --recursive
 docker build -f relay/Dockerfile -t printdrop-relay .
 ```
 
@@ -31,7 +30,7 @@ Run the service on an unprivileged local port:
 docker run --rm -p 127.0.0.1:8080:8080 printdrop-relay
 ```
 
-The image contains both the Go relay binary and the audited browser sender assets. `PRINTDROP_WEB_DIR` defaults to `/web` in the image.
+The image contains both the Go relay binary and the browser sender assets. `PRINTDROP_WEB_DIR` defaults to `/web` in the image.
 
 For a source checkout instead of the container:
 
