@@ -39,8 +39,8 @@ var senderWebAssets = map[string]senderWebAsset{
 		contentType: "text/javascript; charset=utf-8",
 		cache:       "public, max-age=300",
 	},
-	"/vendor/js-sha256/build/sha256.min.js": {
-		file:        "vendor/js-sha256/build/sha256.min.js",
+	"/sha256.js": {
+		file:        "sha256.js",
 		contentType: "text/javascript; charset=utf-8",
 		cache:       "public, max-age=300",
 	},
