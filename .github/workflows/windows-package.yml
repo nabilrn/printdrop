@@ -1,0 +1,93 @@
+name: Windows Packages
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'CMakeLists.txt'
+      - 'include/**'
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/windows-package.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package Windows - ${{ matrix.slug }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: Win32
+            slug: x86
+          - arch: x64
+            slug: x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure Release
+        run: cmake -S . -B build -A ${{ matrix.arch }} -DPD_BUILD_TESTS=ON -DPD_ENABLE_WERROR=ON
+
+      - name: Build Release
+        run: cmake --build build --config Release --parallel
+
+      - name: Test Release
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Create package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = '0.1.0'
+          $name = "PrintDrop-$version-windows-${{ matrix.slug }}"
+          $packageDir = Join-Path 'dist' $name
+          $zipPath = Join-Path 'dist' "$name.zip"
+
+          New-Item -ItemType Directory -Force -Path $packageDir | Out-Null
+          Copy-Item 'build\Release\printdrop.exe' (Join-Path $packageDir 'PrintDrop.exe')
+
+          $hash = (Get-FileHash (Join-Path $packageDir 'PrintDrop.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  PrintDrop.exe" | Set-Content (Join-Path $packageDir 'SHA256SUMS.txt') -Encoding ascii
+
+          @(
+            'PrintDrop 0.1.0 MVP package'
+            'Run PrintDrop.exe on the print-shop Windows PC.'
+            'Received files are saved under Documents\PrintDrop.'
+            'The default public relay origin is https://send.printdrop.app.'
+            'Set PRINTDROP_BASE_URL before launch to use a different HTTPS/WSS origin.'
+            "Source commit: $env:GITHUB_SHA"
+          ) | Set-Content (Join-Path $packageDir 'README.txt') -Encoding utf8
+
+          Compress-Archive -Path "$packageDir\*" -DestinationPath $zipPath -CompressionLevel Optimal
+
+      - name: Verify package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = Get-Item 'dist\PrintDrop-0.1.0-windows-${{ matrix.slug }}.zip'
+          if ($zip.Length -le 0) {
+            throw 'package archive is empty'
+          }
+          New-Item -ItemType Directory -Force -Path 'verify' | Out-Null
+          Expand-Archive -Path $zip.FullName -DestinationPath 'verify'
+          if (-not (Test-Path 'verify\PrintDrop.exe')) {
+            throw 'PrintDrop.exe is missing from package'
+          }
+          if (-not (Test-Path 'verify\SHA256SUMS.txt')) {
+            throw 'SHA256SUMS.txt is missing from package'
+          }
+
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/PrintDrop-0.1.0-windows-${{ matrix.slug }}.zip
+          archive: false
+          if-no-files-found: error
