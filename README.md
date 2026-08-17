@@ -45,9 +45,20 @@ The end-to-end V0.1 receive path is implemented in the repository:
 - native Win32 receive runtime on a worker thread;
 - staged local writes, SHA-256 verification, and atomic completion;
 - operator-visible ready, receiving, verifying, complete, and failed states;
-- relay deployment that serves the QR sender page and API/WebSocket endpoints from one public origin.
+- relay deployment that serves the QR sender page and API/WebSocket endpoints from one public origin;
+- reproducible Release-mode Windows packages for x86 and x64 with an executable checksum.
 
 Hosted CI remains the source-of-truth build gate. Public relay deployment, real phone-to-Windows transfer qualification, and real Windows 7 execution are deployment/release gates rather than missing protocol features.
+
+## Windows packages
+
+The `Windows Packages` workflow builds and tests Release-mode Win32 and x64 binaries. Each artifact is a ZIP containing:
+
+- `PrintDrop.exe`;
+- `SHA256SUMS.txt` for the executable;
+- a short `README.txt` with the runtime location and source commit.
+
+The workflow runs for relevant pull requests and every push to `main`, so the integrated MVP always has downloadable x86 and x64 packages without requiring a local compiler toolchain.
 
 ## Build
 
