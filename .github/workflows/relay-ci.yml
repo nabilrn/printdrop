@@ -49,3 +49,45 @@ jobs:
 
       - name: Build deployable relay image
         run: docker build -f relay/Dockerfile -t printdrop-relay:test .
+
+      - name: Smoke deployable relay image
+        shell: bash
+        run: |
+          set -euo pipefail
+          container='printdrop-relay-smoke'
+          session='0123456789abcdef0123456789abcdef'
+
+          cleanup() {
+            docker rm -f "$container" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker run --detach \
+            --name "$container" \
+            --publish 127.0.0.1:18080:8080 \
+            printdrop-relay:test
+
+          ready=0
+          for _ in {1..40}; do
+            if body="$(curl --fail --silent http://127.0.0.1:18080/healthz 2>/dev/null)" && [[ "$body" == 'ok' ]]; then
+              ready=1
+              break
+            fi
+            sleep 0.25
+          done
+          if [[ "$ready" -ne 1 ]]; then
+            docker logs "$container"
+            exit 1
+          fi
+
+          curl --fail --silent --show-error \
+            "http://127.0.0.1:18080/s/$session" \
+            | grep --fixed-strings 'id="file"'
+
+          curl --fail --silent --show-error --head \
+            "http://127.0.0.1:18080/s/$session" \
+            | grep --ignore-case '^content-security-policy:'
+
+          curl --fail --silent --show-error --head \
+            http://127.0.0.1:18080/app.js \
+            | grep --ignore-case '^content-type: text/javascript; charset=utf-8'
