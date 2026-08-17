@@ -133,11 +133,11 @@ func TestSenderWebRequiresCompleteAssetSet(t *testing.T) {
 
 func senderWebTestFS() fstest.MapFS {
 	return fstest.MapFS{
-		"index.html":                               &fstest.MapFile{Data: []byte("INDEX")},
-		"style.css":                                &fstest.MapFile{Data: []byte("STYLE")},
-		"app.js":                                   &fstest.MapFile{Data: []byte("APP")},
-		"sender.js":                                &fstest.MapFile{Data: []byte("SENDER")},
-		"protocol.js":                              &fstest.MapFile{Data: []byte("PROTOCOL")},
-		"vendor/js-sha256/build/sha256.min.js":     &fstest.MapFile{Data: []byte("SHA")},
+		"index.html":                           &fstest.MapFile{Data: []byte("INDEX")},
+		"style.css":                            &fstest.MapFile{Data: []byte("STYLE")},
+		"app.js":                               &fstest.MapFile{Data: []byte("APP")},
+		"sender.js":                            &fstest.MapFile{Data: []byte("SENDER")},
+		"protocol.js":                          &fstest.MapFile{Data: []byte("PROTOCOL")},
+		"vendor/js-sha256/build/sha256.min.js": &fstest.MapFile{Data: []byte("SHA")},
 	}
 }
