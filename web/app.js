@@ -1,3 +1,4 @@
+import { createSha256 } from './sha256.js';
 import {
   buildSenderWebSocketUrl,
   parseSessionId,
@@ -61,10 +62,6 @@ fileInput.addEventListener('change', () => {
 sendButton.addEventListener('click', async () => {
   const file = fileInput.files?.[0];
   if (!file || !sessionId || busy) return;
-  if (!globalThis.sha256?.create) {
-    status.textContent = 'SHA-256 component failed to load.';
-    return;
-  }
 
   busy = true;
   fileInput.disabled = true;
@@ -81,7 +78,7 @@ sendButton.addEventListener('click', async () => {
     await sendFile({
       file,
       socket,
-      hasherFactory: () => globalThis.sha256.create(),
+      hasherFactory: createSha256,
       onHashProgress(current, total) {
         setProgress('Checking', current, total);
       },
