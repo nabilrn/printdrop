@@ -90,3 +90,24 @@ test('sends begin, bounded chunks, and end with ACK backpressure', async () => {
   assert.deepEqual(progress, [49_152, 98_304, 100_000]);
   assert.equal(socket.receivedBytes, 100_000n);
 });
+
+test('reuses a precomputed digest so hashing can finish before websocket connect', async () => {
+  const bytes = new TextEncoder().encode('hash-before-connect');
+  const file = fileLike('sample.txt', bytes);
+  const digest = await hashFileIncremental(file, createSha256);
+  const socket = new FakeSocket();
+
+  await sendFile({
+    file,
+    socket,
+    hasherFactory() {
+      throw new Error('hasher must not run after websocket connect');
+    },
+    sha256Digest: digest,
+    ackTimeoutMs: 1000,
+  });
+
+  assert.deepEqual(socket.sent,
+                   [MessageType.FILE_BEGIN, MessageType.CHUNK, MessageType.FILE_END]);
+  assert.equal(socket.receivedBytes, BigInt(bytes.byteLength));
+});
