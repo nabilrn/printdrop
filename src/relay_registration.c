@@ -26,9 +26,11 @@ pd_relay_registration_build_result pd_relay_registration_build_endpoint(
     char *output,
     size_t output_capacity)
 {
-    static const char scheme[] = "https://";
+    static const char https_scheme[] = "https://";
+    static const char http_scheme[] = "http://";
     static const char path[] = "/v1/sessions";
     size_t base_length;
+    size_t scheme_length;
     size_t trimmed_length;
     size_t required;
 
@@ -37,19 +39,26 @@ pd_relay_registration_build_result pd_relay_registration_build_endpoint(
     }
 
     base_length = strlen(https_base_url);
-    if (base_length <= sizeof(scheme) - 1U ||
-        base_length > (size_t)PD_RELAY_BASE_URL_MAX_BYTES ||
-        memcmp(https_base_url, scheme, sizeof(scheme) - 1U) != 0 ||
-        strchr(https_base_url, '?') != NULL || strchr(https_base_url, '#') != NULL) {
+    if (base_length > sizeof(https_scheme) - 1U &&
+        memcmp(https_base_url, https_scheme, sizeof(https_scheme) - 1U) == 0) {
+        scheme_length = sizeof(https_scheme) - 1U;
+    } else if (base_length > sizeof(http_scheme) - 1U &&
+               memcmp(https_base_url, http_scheme, sizeof(http_scheme) - 1U) == 0) {
+        scheme_length = sizeof(http_scheme) - 1U;
+    } else {
+        return PD_RELAY_REGISTRATION_BUILD_INVALID_BASE_URL;
+    }
+
+    if (base_length > (size_t)PD_RELAY_BASE_URL_MAX_BYTES || strchr(https_base_url, '?') != NULL ||
+        strchr(https_base_url, '#') != NULL) {
         return PD_RELAY_REGISTRATION_BUILD_INVALID_BASE_URL;
     }
 
     trimmed_length = base_length;
-    while (trimmed_length > sizeof(scheme) - 1U &&
-           https_base_url[trimmed_length - 1U] == '/') {
+    while (trimmed_length > scheme_length && https_base_url[trimmed_length - 1U] == '/') {
         trimmed_length -= 1U;
     }
-    if (trimmed_length <= sizeof(scheme) - 1U) {
+    if (trimmed_length <= scheme_length) {
         return PD_RELAY_REGISTRATION_BUILD_INVALID_BASE_URL;
     }
 
