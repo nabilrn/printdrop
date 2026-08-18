@@ -32,7 +32,13 @@ static void test_endpoint_builder(void)
                           "https://relay.printdrop.app/v1/sessions") == 0);
 
     PD_TEST_ASSERT(pd_relay_registration_build_endpoint(
-                       "http://relay.printdrop.app",
+                       "http://192.168.1.10:8080",
+                       endpoint,
+                       sizeof(endpoint)) == PD_RELAY_REGISTRATION_BUILD_OK);
+    PD_TEST_ASSERT(strcmp(endpoint,
+                          "http://192.168.1.10:8080/v1/sessions") == 0);
+    PD_TEST_ASSERT(pd_relay_registration_build_endpoint(
+                       "ftp://relay.printdrop.app",
                        endpoint,
                        sizeof(endpoint)) == PD_RELAY_REGISTRATION_BUILD_INVALID_BASE_URL);
     PD_TEST_ASSERT(pd_relay_registration_build_endpoint(
