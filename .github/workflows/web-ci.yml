@@ -26,5 +26,5 @@ jobs:
         with:
           node-version: '24.x'
 
-      - name: Test browser protocol, sender, and SHA-256
-        run: node --test web/protocol.test.js web/sender.test.js web/sha256.test.js
+      - name: Test browser protocol, sender, SHA-256, and picker contract
+        run: node --test web/index.test.js web/protocol.test.js web/sender.test.js web/sha256.test.js
