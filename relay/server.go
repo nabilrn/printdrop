@@ -17,11 +17,12 @@ import (
 )
 
 const (
-	publicSessionHexChars  = 32
-	receiverSecretHexChars = 64
-	maxWSMessageBytes      = 60 * 1024
-	registerBodyLimit      = 1024
-	peerWriteTimeout       = 30 * time.Second
+	publicSessionHexChars     = 32
+	receiverSecretHexChars    = 64
+	maxWSMessageBytes         = 60 * 1024
+	registerBodyLimit         = 1024
+	peerWriteTimeout          = 30 * time.Second
+	defaultSenderIdleTimeout  = 45 * time.Second
 )
 
 var (
@@ -33,9 +34,10 @@ var (
 )
 
 type relayServer struct {
-	mu       sync.Mutex
-	sessions map[string]*sessionRecord
-	ttl      time.Duration
+	mu                sync.Mutex
+	sessions          map[string]*sessionRecord
+	ttl               time.Duration
+	senderIdleTimeout time.Duration
 }
 
 type sessionRecord struct {
@@ -64,7 +66,11 @@ type registerSessionResponse struct {
 }
 
 func newRelayServer(ttl time.Duration) *relayServer {
-	return &relayServer{sessions: make(map[string]*sessionRecord), ttl: ttl}
+	return &relayServer{
+		sessions:          make(map[string]*sessionRecord),
+		ttl:               ttl,
+		senderIdleTimeout: defaultSenderIdleTimeout,
+	}
 }
 
 func (s *relayServer) routes() http.Handler {
@@ -163,7 +169,7 @@ func (s *relayServer) handleReceiver(w http.ResponseWriter, r *http.Request) {
 	defer conn.CloseNow()
 	conn.SetReadLimit(maxWSMessageBytes)
 	defer s.detachReceiver(id, bridge)
-	_ = servePeer(bridge.ctx, conn, bridge.toSender, bridge.toReceiver)
+	_ = servePeer(bridge.ctx, conn, bridge.toSender, bridge.toReceiver, 0)
 }
 
 func (s *relayServer) handleSender(w http.ResponseWriter, r *http.Request) {
@@ -194,7 +200,7 @@ func (s *relayServer) handleSender(w http.ResponseWriter, r *http.Request) {
 		bridge.detachSender()
 		bridge.cancel()
 	}()
-	_ = servePeer(bridge.ctx, conn, bridge.toReceiver, bridge.toSender)
+	_ = servePeer(bridge.ctx, conn, bridge.toReceiver, bridge.toSender, s.senderIdleTimeout)
 }
 
 func writeAttachError(w http.ResponseWriter, err error) {
@@ -329,7 +335,7 @@ func (b *relayBridge) detachSender() {
 	b.mu.Unlock()
 }
 
-func servePeer(ctx context.Context, conn *websocket.Conn, readDestination chan<- []byte, writes <-chan []byte) error {
+func servePeer(ctx context.Context, conn *websocket.Conn, readDestination chan<- []byte, writes <-chan []byte, idleTimeout time.Duration) error {
 	peerCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -351,7 +357,13 @@ func servePeer(ctx context.Context, conn *websocket.Conn, readDestination chan<-
 	}()
 
 	for {
-		messageType, data, err := conn.Read(peerCtx)
+		readCtx := peerCtx
+		readCancel := func() {}
+		if idleTimeout > 0 {
+			readCtx, readCancel = context.WithTimeout(peerCtx, idleTimeout)
+		}
+		messageType, data, err := conn.Read(readCtx)
+		readCancel()
 		if err != nil {
 			cancel()
 			return err
