@@ -500,15 +500,17 @@ static void pd_paint(HWND window, pd_app *app)
 
     path_area.left = status_area.left;
     path_area.right = status_area.right;
-    path_area.top = client.bottom - 72;
+    path_area.top = client.bottom - 88;
     path_area.bottom = client.bottom - 28;
-    pd_draw_text(device_context,
-                 L"Received files: Documents\\PrintDrop",
-                 &path_area,
-                 13,
-                 FW_NORMAL,
-                 RGB(110, 110, 110),
-                 DT_LEFT | DT_WORDBREAK);
+    if (app != NULL && app->jobs_root[0] != L'\0') {
+        pd_draw_text(device_context,
+                     app->jobs_root,
+                     &path_area,
+                     13,
+                     FW_NORMAL,
+                     RGB(110, 110, 110),
+                     DT_LEFT | DT_WORDBREAK | DT_NOPREFIX);
+    }
 
     EndPaint(window, &paint);
 }
