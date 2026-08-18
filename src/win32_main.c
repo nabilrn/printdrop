@@ -17,6 +17,8 @@
 #define PD_UI_RELAY_CAPACITY 256U
 #define PD_UI_URL_CAPACITY 512U
 #define PD_UI_SESSION_TTL_MS UINT64_C(300000)
+#define PD_UI_NEXT_SESSION_TIMER_ID 1U
+#define PD_UI_NEXT_SESSION_DELAY_MS 900U
 #define PD_WM_RUNTIME_EVENT (WM_APP + 1U)
 #define PD_WM_RUNTIME_DONE (WM_APP + 2U)
 
@@ -129,8 +131,17 @@ static bool pd_prepare_session(pd_app *app)
 {
     char prefix[PD_UI_RELAY_CAPACITY];
 
-    if (app == NULL || !pd_load_relay_base(app->relay_base) ||
-        !pd_prepare_jobs_root(app->jobs_root)) {
+    if (app == NULL) {
+        return false;
+    }
+
+    app->qr_valid = false;
+    app->public_url[0] = '\0';
+    app->public_url_wide[0] = L'\0';
+    app->received_bytes = UINT64_C(0);
+    app->total_bytes = UINT64_C(0);
+
+    if (!pd_load_relay_base(app->relay_base) || !pd_prepare_jobs_root(app->jobs_root)) {
         return false;
     }
 
@@ -221,7 +232,7 @@ static bool pd_start_receiver(pd_app *app)
 {
     uintptr_t thread;
 
-    if (app == NULL || app->window == NULL) {
+    if (app == NULL || app->window == NULL || app->worker != NULL) {
         return false;
     }
     thread = _beginthreadex(NULL, 0U, pd_receiver_worker, app, 0U, NULL);
@@ -229,6 +240,19 @@ static bool pd_start_receiver(pd_app *app)
         return false;
     }
     app->worker = (HANDLE)thread;
+    return true;
+}
+
+static bool pd_start_next_session(pd_app *app)
+{
+    if (app == NULL || app->worker != NULL || !pd_prepare_session(app)) {
+        return false;
+    }
+    if (!pd_start_receiver(app)) {
+        pd_receiver_session_close(&app->session);
+        app->qr_valid = false;
+        return false;
+    }
     return true;
 }
 
@@ -247,7 +271,7 @@ static const wchar_t *pd_state_text(const pd_app *app)
     case PD_UI_VERIFYING:
         return L"Verifying SHA-256";
     case PD_UI_COMPLETE:
-        return L"Complete - file saved";
+        return L"Complete - preparing next QR";
     case PD_UI_FAILED:
         switch (app->runtime_result) {
         case PD_WIN32_RECEIVER_RUNTIME_REGISTRATION_ERROR:
@@ -574,16 +598,35 @@ static LRESULT CALLBACK pd_window_proc(HWND window, UINT message, WPARAM wparam,
     case PD_WM_RUNTIME_DONE:
         if (app != NULL) {
             app->runtime_result = (pd_win32_receiver_runtime_result)wparam;
-            if (app->runtime_result != PD_WIN32_RECEIVER_RUNTIME_OK) {
-                app->state = PD_UI_FAILED;
-            }
             if (app->worker != NULL) {
                 CloseHandle(app->worker);
                 app->worker = NULL;
             }
+            if (app->runtime_result == PD_WIN32_RECEIVER_RUNTIME_OK) {
+                if (SetTimer(window,
+                             (UINT_PTR)PD_UI_NEXT_SESSION_TIMER_ID,
+                             (UINT)PD_UI_NEXT_SESSION_DELAY_MS,
+                             NULL) == 0U) {
+                    app->runtime_result = PD_WIN32_RECEIVER_RUNTIME_RELAY_ERROR;
+                    app->state = PD_UI_FAILED;
+                }
+            } else {
+                app->state = PD_UI_FAILED;
+            }
             InvalidateRect(window, NULL, TRUE);
         }
         return 0;
+    case WM_TIMER:
+        if ((UINT_PTR)wparam == (UINT_PTR)PD_UI_NEXT_SESSION_TIMER_ID) {
+            (void)KillTimer(window, (UINT_PTR)PD_UI_NEXT_SESSION_TIMER_ID);
+            if (app != NULL && !pd_start_next_session(app)) {
+                app->runtime_result = PD_WIN32_RECEIVER_RUNTIME_RELAY_ERROR;
+                app->state = PD_UI_FAILED;
+            }
+            InvalidateRect(window, NULL, TRUE);
+            return 0;
+        }
+        return DefWindowProcW(window, message, wparam, lparam);
     case WM_PAINT:
         pd_paint(window, app);
         return 0;
@@ -591,6 +634,7 @@ static LRESULT CALLBACK pd_window_proc(HWND window, UINT message, WPARAM wparam,
         InvalidateRect(window, NULL, TRUE);
         return 0;
     case WM_DESTROY:
+        (void)KillTimer(window, (UINT_PTR)PD_UI_NEXT_SESSION_TIMER_ID);
         if (app != NULL && app->worker != NULL) {
             CloseHandle(app->worker);
             app->worker = NULL;
