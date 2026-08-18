@@ -36,19 +36,21 @@ static pd_relay_endpoint_result pd_normalize_base(const char *base,
         return PD_RELAY_ENDPOINT_INVALID_ARGUMENT;
     }
 
-    if (memcmp(base, https_prefix, sizeof(https_prefix) - 1U) == 0) {
+    length = strlen(base);
+    if (length > sizeof(https_prefix) - 1U &&
+        memcmp(base, https_prefix, sizeof(https_prefix) - 1U) == 0) {
         prefix_length = sizeof(https_prefix) - 1U;
         is_secure = true;
-    } else if (memcmp(base, http_prefix, sizeof(http_prefix) - 1U) == 0) {
+    } else if (length > sizeof(http_prefix) - 1U &&
+               memcmp(base, http_prefix, sizeof(http_prefix) - 1U) == 0) {
         prefix_length = sizeof(http_prefix) - 1U;
         is_secure = false;
     } else {
         return PD_RELAY_ENDPOINT_INVALID_BASE_URL;
     }
 
-    length = strlen(base);
-    if (length <= prefix_length || length > (size_t)PD_RELAY_BASE_URL_MAX_BYTES ||
-        strchr(base, '?') != NULL || strchr(base, '#') != NULL) {
+    if (length > (size_t)PD_RELAY_BASE_URL_MAX_BYTES || strchr(base, '?') != NULL ||
+        strchr(base, '#') != NULL) {
         return PD_RELAY_ENDPOINT_INVALID_BASE_URL;
     }
     while (length > prefix_length && base[length - 1U] == '/') {
