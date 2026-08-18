@@ -5,6 +5,7 @@
 #include "printdrop/relay_registration.h"
 #include "printdrop/secure_zero.h"
 
+#include <winsock2.h>
 #include <windows.h>
 #include <curl/curl.h>
 
