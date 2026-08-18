@@ -5,6 +5,9 @@
 
 static int failures = 0;
 
+_Static_assert(PD_RELAY_MAX_PAYLOAD < PD_FRAME_MAX_PAYLOAD,
+               "Relay WebSocket payload ceiling must stay below the frame payload ceiling");
+
 #define PD_TEST_ASSERT(condition)                                                                    \
     do {                                                                                             \
         if (!(condition)) {                                                                          \
@@ -42,7 +45,6 @@ static void test_relay_message_enforces_smaller_ws_ceiling(void)
     pd_relay_message_view view;
     size_t written = 99U;
 
-    PD_TEST_ASSERT((size_t)PD_RELAY_MAX_PAYLOAD < (size_t)PD_FRAME_MAX_PAYLOAD);
     PD_TEST_ASSERT(pd_relay_message_encode(&header,
                                            payload,
                                            sizeof(payload),
