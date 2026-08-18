@@ -33,7 +33,14 @@ int main(void)
     PD_TEST_ASSERT(strcmp(output,
                           "wss://relay.printdrop.app/v1/sender/00112233445566778899aabbccddeeff") ==
                    0);
-    PD_TEST_ASSERT(pd_relay_build_receiver_wss_url("http://relay.printdrop.app",
+    PD_TEST_ASSERT(pd_relay_build_receiver_wss_url("http://192.168.1.10:8080",
+                                                   session,
+                                                   output,
+                                                   sizeof(output)) == PD_RELAY_ENDPOINT_OK);
+    PD_TEST_ASSERT(strcmp(output,
+                          "ws://192.168.1.10:8080/v1/receiver/00112233445566778899aabbccddeeff") ==
+                   0);
+    PD_TEST_ASSERT(pd_relay_build_receiver_wss_url("ftp://relay.printdrop.app",
                                                    session,
                                                    output,
                                                    sizeof(output)) ==
