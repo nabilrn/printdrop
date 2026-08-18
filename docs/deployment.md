@@ -41,9 +41,46 @@ go run .
 
 The source-mode default sender directory is `../web`. It can be overridden with `PRINTDROP_WEB_DIR`.
 
+## Local phone-to-Windows E2E test
+
+Production remains HTTPS/WSS-only by default. For development on a trusted LAN, the Windows receiver supports an explicit insecure opt-in so the real phone -> relay -> Windows flow can be exercised without provisioning a certificate.
+
+This mode sends the receiver credential and file traffic in plaintext on the LAN. Use it only on a trusted development network, never on public Wi-Fi or an Internet-facing relay.
+
+1. Put the Windows PC and phone on the same LAN and find the PC's LAN IPv4 address, for example `192.168.1.42`.
+2. Start the relay so it is reachable from the LAN. From a source checkout:
+
+```powershell
+cd relay
+$env:PRINTDROP_RELAY_ADDR = "0.0.0.0:8080"
+go run .
+```
+
+3. From the phone, open `http://<PC-LAN-IP>:8080/healthz`. It must display `ok`. If it cannot connect, check the Windows firewall/network profile before testing PrintDrop.
+4. In a second PowerShell window on the Windows PC, opt in to insecure development transport and launch the receiver:
+
+```powershell
+$env:PRINTDROP_ALLOW_INSECURE_HTTP = "1"
+$env:PRINTDROP_BASE_URL = "http://192.168.1.42:8080"
+.\build\Debug\printdrop.exe
+```
+
+Replace the example IP with the PC's actual LAN address. The generated QR will use the HTTP LAN origin, receiver registration will use HTTP, and the receiver WebSocket will use `ws://`.
+
+5. Scan the QR from the phone, choose a print-friendly file, and send it. A successful file appears under the absolute receive directory shown by the Windows app.
+6. Close the receiver and clear the development overrides when finished:
+
+```powershell
+Remove-Item Env:PRINTDROP_ALLOW_INSECURE_HTTP -ErrorAction SilentlyContinue
+Remove-Item Env:PRINTDROP_BASE_URL -ErrorAction SilentlyContinue
+Remove-Item Env:PRINTDROP_RELAY_ADDR -ErrorAction SilentlyContinue
+```
+
+If `PRINTDROP_ALLOW_INSECURE_HTTP` is absent or is anything other than exactly `1`, native registration and `ws://` receiver transport remain rejected.
+
 ## TLS is required in production
 
-The relay process deliberately listens with plain HTTP so TLS can be terminated by a reverse proxy. The public endpoint used by the Windows receiver must be HTTPS/WSS.
+The relay process deliberately listens with plain HTTP so TLS can be terminated by a reverse proxy. The public endpoint used by the Windows receiver must be HTTPS/WSS unless the explicit insecure development opt-in above is active.
 
 A minimal Caddy deployment is:
 
@@ -55,7 +92,7 @@ send.printdrop.app {
 
 The reverse proxy must preserve WebSocket upgrades for `/v1/receiver/*` and `/v1/sender/*`.
 
-Do not expose the relay's plain HTTP port directly to the internet. Receiver credentials are sent only to the HTTPS registration and WSS receiver endpoints.
+Do not expose the relay's plain HTTP port directly to the internet. Receiver credentials are sent only to the HTTPS registration and WSS receiver endpoints in normal operation.
 
 ## Health check
 
@@ -87,5 +124,5 @@ Before calling a deployment usable, verify from a separate phone/network that:
 1. `/healthz` is reachable over the public HTTPS origin.
 2. opening a generated `/s/<session-id>` URL loads the sender UI.
 3. the browser can upgrade `/v1/sender/<session-id>` to WSS after the native receiver is connected.
-4. a transferred file appears under `Documents\PrintDrop` on the Windows receiver.
+4. a transferred file appears under the receive directory displayed by the Windows receiver.
 5. no `.part` staging file remains after a successful transfer or an intentionally failed checksum test.
