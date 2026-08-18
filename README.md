@@ -1,64 +1,128 @@
 # PrintDrop
 
-PrintDrop is a lightweight, local-first file receiver for print shops.
+> **Status: Experimental / archived as a product experiment.**
+>
+> PrintDrop proved the core technical path end to end, but further product development is intentionally paused. The project is kept as an engineering case study rather than positioned as a production-ready print-shop product.
 
-A shop operator should be able to launch one small Windows application, show a QR code, and receive files from any modern Android or iPhone browser without asking the customer to log in to WhatsApp, save a phone number, install a sender app, or plug in a cable.
+PrintDrop is a lightweight file-transfer experiment for receiving files on Windows PCs from a phone browser through short-lived QR sessions.
 
-## Product goal
+The original product idea was simple:
 
 **No login. No WhatsApp. No cable. Scan, send, print.**
 
-PrintDrop is intentionally receiver-first:
+The repository explores whether that experience can work on old print-shop PCs without Electron, a browser runtime, or a heavy local stack.
 
-1. `PrintDrop.exe` runs locally on the print-shop PC.
-2. It creates a short-lived receive session and displays a QR code.
-3. The customer scans the QR code and opens a tiny HTML/CSS/JavaScript sender.
-4. The sender streams the file through the public relay with bounded, ACK-driven chunks.
-5. The native receiver validates SHA-256 and atomically writes the completed file under `Documents\PrintDrop`.
+## What was proven
 
-The V0.1 transport is an internet relay because it works across old routers, CGNAT, Ethernet-only shop PCs, Android, and iOS. Direct LAN and native peer-to-peer transports can be added later behind the same protocol boundary.
+The experiment reached a real end-to-end working state:
+
+- native C11 + Win32 receiver;
+- QR-based short-lived receive sessions;
+- plain HTML/CSS/JavaScript sender for Android and iPhone browsers;
+- WebSocket transfer with bounded chunks and ACK-driven flow control;
+- incremental SHA-256 verification;
+- staged writes and atomic file completion under `Documents\PrintDrop`;
+- public relay mode with no cloud file storage;
+- explicit trusted-LAN mode for direct local testing;
+- automatic session rotation after a completed transfer;
+- x86 and x64 Windows package builds;
+- portable core CI on GCC, Clang, ASan, and UBSan;
+- Windows CI on MSVC Win32 and x64;
+- physical phone-to-Windows end-to-end transfer successfully tested.
+
+## Architecture explored
+
+```text
+Phone browser
+     |
+     | QR session
+     v
++-------------------+
+| Browser sender    |
+| HTML / CSS / JS   |
++-------------------+
+     |
+     | WebSocket frames
+     v
++-------------------+       optional public path
+| Go relay          |  <-------------------------->
+| no file storage   |
++-------------------+
+     |
+     v
++-------------------+
+| PrintDrop.exe     |
+| native Win32/C11  |
++-------------------+
+     |
+     v
+Documents\PrintDrop
+```
+
+A trusted-LAN mode was also added so the sender and receiver can communicate over the shop network without requiring a public tunnel during local qualification.
+
+## Why product development stopped here
+
+The technical problem turned out to be easier than the adoption problem.
+
+The intended environment has several real-world constraints:
+
+- many print shops still use old or low-spec Windows PCs;
+- PCs may be Ethernet-only while customer phones are on Wi-Fi or mobile data;
+- printers may support Wi-Fi but shops often do not configure or use those capabilities;
+- customers and operators are already highly accustomed to WhatsApp for sending print files;
+- replacing that familiar workflow would require PrintDrop to deliver significantly more convenience than file transfer alone;
+- seamless network onboarding across arbitrary routers, old PCs, Android, iOS, browser security policies, and customer Wi-Fi behavior adds disproportionate complexity.
+
+The experiment therefore reached an important product conclusion:
+
+> A technically cleaner file-transfer path is not enough by itself to displace an established workflow such as WhatsApp.
+
+A stronger future product would likely need to solve the **print-order workflow** itself — queueing, print settings, multiple files, job identity, cleanup, and operator workflow — rather than compete only on transport.
+
+## Intentionally not pursued
+
+The following ideas were discussed but are outside the completed experiment:
+
+- multi-file customer sessions;
+- explicit `SESSION_END` / batch job lifecycle;
+- automatic Wi-Fi credential onboarding;
+- customer hotspot orchestration;
+- persistent `device_id` transport;
+- persistent device WebSocket + rotating customer sessions;
+- WebRTC / NAT traversal;
+- production-scale relay infrastructure;
+- print-order queue and structured print settings;
+- polished production desktop UI;
+- formal Windows 7 runtime qualification.
+
+These are not listed as missing MVP work. They are deliberately left as possible follow-up research directions.
 
 ## Engineering constraints
 
-- Native C11 core and Win32 receiver.
-- Windows 7 SP1 through Windows 11 is the compatibility target.
-- x86 and x64 builds.
-- No Electron, browser engine, Node.js runtime, Docker, or local database requirement on the print-shop PC.
-- Keep the customer sender to plain HTML, CSS, and JavaScript.
-- Transport-independent protocol and transfer state machine.
-- Logic changes require tests.
-- Every push and pull request runs CI.
-- Warnings are treated as errors.
-- Linux CI exercises the portable core with GCC, Clang, ASan, and UBSan.
-- Windows CI compiles and tests Win32 and x64 builds with MSVC.
+The implementation was intentionally conservative:
 
-> Windows 7 is a release target, not yet a proven compatibility claim. Hosted CI compile-gates Win32/x64; real Windows 7 execution qualification remains a release gate before the first beta.
+- C11 portable core with a native Win32 receiver;
+- Windows 7 SP1 through Windows 11 as the design compatibility target;
+- x86 and x64 builds;
+- no Electron;
+- no embedded browser engine;
+- no Node.js runtime on the receiver PC;
+- no Docker or local database requirement on the receiver PC;
+- plain web sender with zero build step;
+- transport-independent protocol boundaries;
+- warnings treated as errors;
+- CI-backed logic changes.
 
-## Current status
-
-The end-to-end V0.1 receive path is implemented in the repository:
-
-- short-lived receiver sessions and QR URLs;
-- browser sender with first-party incremental SHA-256 and bounded chunking;
-- authenticated HTTPS receiver registration;
-- bounded WSS relay transport with no cloud file storage;
-- native Win32 receive runtime on a worker thread;
-- staged local writes, SHA-256 verification, and atomic completion;
-- operator-visible ready, receiving, verifying, complete, and failed states;
-- relay deployment that serves the QR sender page and API/WebSocket endpoints from one public origin;
-- reproducible Release-mode Windows packages for x86 and x64 with an executable checksum.
-
-Hosted CI remains the source-of-truth build gate. Public relay deployment, real phone-to-Windows transfer qualification, and real Windows 7 execution are deployment/release gates rather than missing protocol features.
+> Windows 7 remains a design/release target rather than a proven runtime compatibility claim. The project was physically qualified on a modern Windows environment, while hosted CI compile-gates Win32/x64 builds.
 
 ## Windows packages
 
-The `Windows Packages` workflow builds and tests Release-mode Win32 and x64 binaries. Each artifact is a ZIP containing:
+The `Windows Packages` workflow produces Release-mode Win32 and x64 artifacts containing:
 
 - `PrintDrop.exe`;
-- `SHA256SUMS.txt` for the executable;
-- a short `README.txt` with the runtime location and source commit.
-
-The workflow runs for relevant pull requests and every push to `main`, so the integrated MVP always has downloadable x86 and x64 packages without requiring a local compiler toolchain.
+- `SHA256SUMS.txt`;
+- a short package README with runtime/source information.
 
 ## Build
 
@@ -87,7 +151,7 @@ docker build -f relay/Dockerfile -t printdrop-relay .
 docker run --rm -p 127.0.0.1:8080:8080 printdrop-relay
 ```
 
-Production relay traffic must be exposed through an HTTPS/WSS reverse proxy. See `docs/deployment.md` for the deployment contract and qualification gates.
+For deployment and trusted-LAN qualification details, see `docs/deployment.md`.
 
 ## Repository map
 
@@ -98,7 +162,11 @@ relay/               Short-lived authenticated relay service
 web/                 Zero-build customer browser sender
 tests/               Native unit/integration tests
 docs/                Architecture, deployment, and engineering contracts
-.github/workflows/    CI gates
+.github/workflows/    CI and Windows packaging gates
 ```
 
-See `docs/engineering-goals.md`, `docs/architecture.md`, `docs/deployment.md`, and `CONTRIBUTING.md` before implementing a feature.
+## Takeaway
+
+PrintDrop succeeded as an engineering experiment: it demonstrated a small native Windows receiver, browser sender, QR session model, relay/local transport paths, integrity verification, packaging, and cross-platform CI under constraints inspired by real print-shop PCs.
+
+It is intentionally paused here so the repository remains a clear record of the experiment instead of accumulating product complexity without sufficient user-value evidence.
