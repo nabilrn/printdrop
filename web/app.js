@@ -1,6 +1,7 @@
 import { createSha256 } from './sha256.js';
 import {
   buildSenderWebSocketUrl,
+  hashFileIncremental,
   parseSessionId,
   sendFile,
   waitForSocketOpen,
@@ -15,6 +16,7 @@ const progressLabel = document.querySelector('#progress-label');
 
 const sessionId = parseSessionId(window.location.pathname);
 let busy = false;
+let activeSocket = null;
 
 function formatBytes(value) {
   if (value < 1024) return `${value} B`;
@@ -38,6 +40,13 @@ function setProgress(label, current, total) {
   progressLabel.textContent = `${label} ${Math.round(ratio * 100)}%`;
 }
 
+function closeActiveSocket(reason) {
+  if (activeSocket && activeSocket.readyState < 2) {
+    activeSocket.close(1000, reason);
+  }
+  activeSocket = null;
+}
+
 if (!sessionId) {
   status.textContent = 'This PrintDrop link is invalid.';
   fileInput.disabled = true;
@@ -59,6 +68,10 @@ fileInput.addEventListener('change', () => {
   updateButton();
 });
 
+window.addEventListener('pagehide', () => {
+  closeActiveSocket('page closed');
+});
+
 sendButton.addEventListener('click', async () => {
   const file = fileInput.files?.[0];
   if (!file || !sessionId || busy) return;
@@ -69,19 +82,22 @@ sendButton.addEventListener('click', async () => {
   let socket;
 
   try {
+    status.textContent = 'Checking file integrity…';
+    const digest = await hashFileIncremental(file, createSha256, (current, total) => {
+      setProgress('Checking', current, total);
+    });
+
     status.textContent = 'Connecting to receiver…';
     socket = new WebSocket(buildSenderWebSocketUrl(window.location, sessionId));
     socket.binaryType = 'arraybuffer';
+    activeSocket = socket;
     await waitForSocketOpen(socket);
 
-    status.textContent = 'Checking file integrity…';
     await sendFile({
       file,
       socket,
       hasherFactory: createSha256,
-      onHashProgress(current, total) {
-        setProgress('Checking', current, total);
-      },
+      sha256Digest: digest,
       onUploadProgress(current, total) {
         status.textContent = 'Sending file…';
         setProgress('Sending', current, total);
@@ -91,13 +107,11 @@ sendButton.addEventListener('click', async () => {
     progress.value = 100;
     progressLabel.textContent = 'Sent 100%';
     status.textContent = 'File sent. You can close this page.';
-    socket.close(1000, 'complete');
+    closeActiveSocket('complete');
   } catch (error) {
     progressLabel.textContent = 'Transfer failed';
     status.textContent = error instanceof Error ? error.message : 'Transfer failed.';
-    if (socket && socket.readyState < 2) {
-      socket.close(1011, 'transfer failed');
-    }
+    closeActiveSocket('transfer failed');
     busy = false;
     fileInput.disabled = false;
     updateButton();

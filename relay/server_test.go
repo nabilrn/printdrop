@@ -102,6 +102,40 @@ func TestBinaryFramesBridgeBothDirections(t *testing.T) {
 	}
 }
 
+func TestIdleSenderDisconnectClosesBridge(t *testing.T) {
+	relay := newRelayServer(time.Minute)
+	relay.senderIdleTimeout = 50 * time.Millisecond
+	server := httptest.NewServer(relay.routes())
+	defer server.Close()
+	registerForTest(t, server.URL, testSession, testSecret)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	receiver, response, err := websocket.Dial(ctx,
+		wsURL(server.URL)+"/v1/receiver/"+testSession,
+		&websocket.DialOptions{HTTPHeader: http.Header{"Authorization": []string{"Bearer " + testSecret}}})
+	if err != nil {
+		t.Fatalf("receiver dial: %v (response=%v)", err, response)
+	}
+	defer receiver.CloseNow()
+
+	sender, response, err := websocket.Dial(ctx, wsURL(server.URL)+"/v1/sender/"+testSession, nil)
+	if err != nil {
+		t.Fatalf("sender dial: %v (response=%v)", err, response)
+	}
+	defer sender.CloseNow()
+
+	idleCtx, idleCancel := context.WithTimeout(context.Background(), time.Second)
+	defer idleCancel()
+	if _, _, err := sender.Read(idleCtx); err == nil {
+		t.Fatal("idle sender stayed connected past the configured cutoff")
+	}
+	if _, _, err := receiver.Read(idleCtx); err == nil {
+		t.Fatal("receiver bridge stayed connected after idle sender cleanup")
+	}
+}
+
 func TestSenderCannotAttachBeforeReceiver(t *testing.T) {
 	relay := newRelayServer(time.Minute)
 	server := httptest.NewServer(relay.routes())
