@@ -1,6 +1,8 @@
 #include "printdrop/receiver_session.h"
 #include "printdrop/win32_relay_client.h"
 
+#include <windows.h>
+
 #include <stdio.h>
 #include <string.h>
 
@@ -22,6 +24,7 @@ int main(void)
     const char *curl_version;
     const char *ssl_backend;
 
+    (void)SetEnvironmentVariableA("PRINTDROP_ALLOW_INSECURE_HTTP", NULL);
     PD_TEST_ASSERT(pd_win32_curl_global_init());
 
     curl_version = pd_win32_relay_client_curl_version();
@@ -53,6 +56,20 @@ int main(void)
     PD_TEST_ASSERT(client.request_headers == NULL);
     PD_TEST_ASSERT(client.message_buffer == NULL);
     PD_TEST_ASSERT(client.url[0] == '\0');
+
+    PD_TEST_ASSERT(pd_win32_relay_client_init(
+                       &client,
+                       "ws://192.168.1.10:8080/v1/receiver/0123456789abcdef",
+                       receiver_secret) == PD_RELAY_CLIENT_INVALID_URL);
+    PD_TEST_ASSERT(SetEnvironmentVariableA("PRINTDROP_ALLOW_INSECURE_HTTP", "1") != 0);
+    PD_TEST_ASSERT(pd_win32_relay_client_init(
+                       &client,
+                       "ws://192.168.1.10:8080/v1/receiver/0123456789abcdef",
+                       receiver_secret) == PD_RELAY_CLIENT_OK);
+    PD_TEST_ASSERT(strcmp(client.url,
+                          "ws://192.168.1.10:8080/v1/receiver/0123456789abcdef") == 0);
+    pd_win32_relay_client_cleanup(&client);
+    (void)SetEnvironmentVariableA("PRINTDROP_ALLOW_INSECURE_HTTP", NULL);
 
     PD_TEST_ASSERT(pd_win32_relay_client_init(&client,
                                               "https://relay.printdrop.app",

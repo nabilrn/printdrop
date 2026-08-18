@@ -9,9 +9,19 @@
 #include <stdio.h>
 #include <string.h>
 
-static bool pd_relay_url_is_wss(const char *url)
+static bool pd_insecure_http_enabled(void)
 {
-    static const char prefix[] = "wss://";
+    char value[2];
+    DWORD length = GetEnvironmentVariableA("PRINTDROP_ALLOW_INSECURE_HTTP",
+                                           value,
+                                           (DWORD)sizeof(value));
+    return length == 1U && value[0] == '1';
+}
+
+static bool pd_relay_url_is_allowed(const char *url)
+{
+    static const char secure_prefix[] = "wss://";
+    static const char insecure_prefix[] = "ws://";
     size_t length;
 
     if (url == NULL) {
@@ -19,9 +29,14 @@ static bool pd_relay_url_is_wss(const char *url)
     }
 
     length = strlen(url);
-    return length > sizeof(prefix) - 1U &&
+    if (length > sizeof(secure_prefix) - 1U &&
+        length <= (size_t)PD_RELAY_URL_MAX_BYTES &&
+        memcmp(url, secure_prefix, sizeof(secure_prefix) - 1U) == 0) {
+        return true;
+    }
+    return pd_insecure_http_enabled() && length > sizeof(insecure_prefix) - 1U &&
            length <= (size_t)PD_RELAY_URL_MAX_BYTES &&
-           memcmp(url, prefix, sizeof(prefix) - 1U) == 0;
+           memcmp(url, insecure_prefix, sizeof(insecure_prefix) - 1U) == 0;
 }
 
 static bool pd_receiver_secret_is_valid(const char *secret)
@@ -118,7 +133,7 @@ pd_relay_client_result pd_win32_relay_client_init(pd_win32_relay_client *client,
 
     memset(client, 0, sizeof(*client));
 
-    if (!pd_relay_url_is_wss(wss_url)) {
+    if (!pd_relay_url_is_allowed(wss_url)) {
         return PD_RELAY_CLIENT_INVALID_URL;
     }
     if (!pd_receiver_secret_is_valid(receiver_secret)) {

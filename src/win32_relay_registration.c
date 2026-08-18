@@ -5,6 +5,8 @@
 #include "printdrop/relay_registration.h"
 #include "printdrop/secure_zero.h"
 
+#include <winsock2.h>
+#include <windows.h>
 #include <curl/curl.h>
 
 #include <stdbool.h>
@@ -30,6 +32,28 @@ static bool pd_secret_is_lower_hex(const char *value)
         }
     }
     return true;
+}
+
+static bool pd_insecure_http_enabled(void)
+{
+    char value[2];
+    DWORD length = GetEnvironmentVariableA("PRINTDROP_ALLOW_INSECURE_HTTP",
+                                           value,
+                                           (DWORD)sizeof(value));
+    return length == 1U && value[0] == '1';
+}
+
+static bool pd_base_url_requires_insecure_opt_in(const char *base_url)
+{
+    static const char prefix[] = "http://";
+    size_t length;
+
+    if (base_url == NULL) {
+        return false;
+    }
+    length = strlen(base_url);
+    return length > sizeof(prefix) - 1U &&
+           memcmp(base_url, prefix, sizeof(prefix) - 1U) == 0;
 }
 
 static size_t pd_discard_response(char *data, size_t size, size_t count, void *context)
@@ -93,7 +117,8 @@ pd_win32_relay_registration_result pd_win32_relay_register_session(
     if (https_base_url == NULL || session_id == NULL || receiver_secret == NULL) {
         return PD_WIN32_RELAY_REGISTRATION_INVALID_ARGUMENT;
     }
-    if (!pd_secret_is_lower_hex(receiver_secret) ||
+    if ((pd_base_url_requires_insecure_opt_in(https_base_url) && !pd_insecure_http_enabled()) ||
+        !pd_secret_is_lower_hex(receiver_secret) ||
         pd_relay_registration_build_endpoint(https_base_url,
                                              endpoint,
                                              sizeof(endpoint)) !=
