@@ -17,12 +17,12 @@ import (
 )
 
 const (
-	publicSessionHexChars     = 32
-	receiverSecretHexChars    = 64
-	maxWSMessageBytes         = 60 * 1024
-	registerBodyLimit         = 1024
-	peerWriteTimeout          = 30 * time.Second
-	defaultSenderIdleTimeout  = 45 * time.Second
+	publicSessionHexChars    = 32
+	receiverSecretHexChars   = 64
+	maxWSMessageBytes        = 60 * 1024
+	registerBodyLimit        = 1024
+	peerWriteTimeout         = 30 * time.Second
+	defaultSenderIdleTimeout = 45 * time.Second
 )
 
 var (
