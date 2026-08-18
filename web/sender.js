@@ -44,6 +44,13 @@ function requireFileLike(file) {
   }
 }
 
+function requireSha256Digest(digest) {
+  if (!(digest instanceof Uint8Array) || digest.byteLength !== 32) {
+    throw new TypeError('invalid SHA-256 digest');
+  }
+  return digest;
+}
+
 export async function hashFileIncremental(file, hasherFactory, onProgress = null,
                                           chunkSize = HASH_CHUNK_SIZE) {
   requireFileLike(file);
@@ -182,6 +189,7 @@ export async function sendFile({
   file,
   socket,
   hasherFactory,
+  sha256Digest = null,
   onHashProgress = null,
   onUploadProgress = null,
   ackTimeoutMs = DEFAULT_ACK_TIMEOUT_MS,
@@ -191,7 +199,9 @@ export async function sendFile({
     throw new Error('WebSocket is not connected');
   }
 
-  const digest = await hashFileIncremental(file, hasherFactory, onHashProgress);
+  const digest = sha256Digest === null
+    ? await hashFileIncremental(file, hasherFactory, onHashProgress)
+    : requireSha256Digest(sha256Digest);
   const fileSize = BigInt(file.size);
   const beginPayload = encodeFileBegin({
     fileSize,
